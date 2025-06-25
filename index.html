@@ -1,0 +1,2134 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ブロックベースHTMLエディタ</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+  <style>
+    :root {
+      --bg-light: #f8f9fa;
+      --bg-white: #ffffff;
+      --border-color: #dee2e6;
+      --text-primary: #212529;
+      --text-secondary: #6c757d;
+      --primary-color: #0d6efd;
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, .05);
+    }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: var(--bg-light);
+    }
+
+    .app-container {
+      display: flex;
+      height: 100vh;
+    }
+
+    .sidebar {
+      width: 280px;
+      background-color: var(--bg-white);
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .editor-pane {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    .preview-pane {
+      flex: 1;
+      background-color: #f1f3f5;
+      border-left: 1px solid var(--border-color);
+    }
+
+    .pane-header {
+      padding: 1rem;
+      border-bottom: 1px solid var(--border-color);
+      font-weight: bold;
+      font-size: 1.1rem;
+      background-color: var(--bg-white);
+    }
+
+    .sidebar-content {
+      flex-grow: 1;
+      overflow-y: auto;
+    }
+
+    #editor-blocks {
+      padding: 1rem;
+    }
+
+    #preview-iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      background-color: var(--bg-white);
+    }
+
+    .template-list button {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      width: 100%;
+      text-align: left;
+      padding: 0.75rem 1rem;
+      margin-bottom: 0.5rem;
+      background-color: #f8f9fa;
+      border: 1px solid var(--border-color);
+      border-radius: 0.25rem;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+
+    .template-list button:hover {
+      background-color: #e9ecef;
+    }
+
+    .template-list:first-child button {
+      background-color: #e8f5e8;
+      border-color: #c3e6c3;
+    }
+
+    .template-list:first-child button:hover {
+      background-color: #d4ecd4;
+    }
+
+    .template-list.box-parts button {
+      background-color: #fff3e0;
+      border-color: #ffcc80;
+    }
+
+    .template-list.box-parts button:hover {
+      background-color: #ffe0b2;
+    }
+
+    .template-list.other-parts button {
+      background-color: #f3e5f5;
+      border-color: #ce93d8;
+    }
+
+    .template-list.other-parts button:hover {
+      background-color: #e1bee7;
+    }
+
+    .block {
+      background: var(--bg-white);
+      border: 1px solid var(--border-color);
+      border-radius: 0.3rem;
+      margin-bottom: 1rem;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .block-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.5rem 0.5rem 0.5rem 0.5rem;
+      cursor: pointer;
+    }
+
+    .block-header .block-title {
+      flex-grow: 1;
+      margin-left: 0.5rem;
+    }
+
+    .block-title[contenteditable="true"] {
+      outline: none;
+      padding: 2px 4px;
+      border-radius: 2px;
+      cursor: text;
+    }
+
+    .block-title[contenteditable="true"]:focus {
+      background-color: #e7f3ff;
+      box-shadow: 0 0 0 2px #0d6efd40;
+    }
+
+    .block-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      flex-shrink: 0;
+    }
+
+    .block-actions button {
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0.25rem;
+      color: #6c757d;
+    }
+
+    .block-actions button:hover {
+      color: #212529;
+    }
+
+    .drag-handle {
+      cursor: grab;
+      touch-action: none;
+    }
+
+    .sortable-ghost {
+      opacity: 0.4;
+      background: #cce5ff;
+    }
+
+    .block-content {
+      padding: 1rem;
+      border-top: 1px solid var(--border-color);
+    }
+
+    .form-group {
+      margin-bottom: 1rem;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 0.25rem;
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
+      width: 100%;
+      padding: 0.5rem;
+      border: 1px solid #ced4da;
+      border-radius: 0.25rem;
+      box-sizing: border-box;
+    }
+
+    .form-group textarea {
+      min-height: 100px;
+      resize: vertical;
+      font-family: monospace;
+    }
+
+    .item-pair {
+      border: 1px dashed #ced4da;
+      padding: 1rem;
+      margin-top: 1rem;
+      border-radius: 0.25rem;
+    }
+
+    .copy-html-btn {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      padding: 1rem 1.5rem;
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      font-size: 1rem;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+      z-index: 100;
+    }
+
+    .editable-content {
+      min-height: 80px;
+      padding: 0.5rem;
+      border: 1px solid #ced4da;
+      border-radius: 0.25rem;
+      overflow: auto;
+    }
+
+    .editable-content:focus {
+      border-color: #86b7fe;
+      outline: 0;
+      box-shadow: 0 0 0 0.25rem rgb(13 110 253 / 25%);
+    }
+
+    .editable-content:empty::before {
+      content: attr(data-placeholder);
+      color: #adb5bd;
+      pointer-events: none;
+    }
+
+    #mini-toolbar {
+      position: absolute;
+      background: #343a40;
+      color: white;
+      border-radius: 5px;
+      padding: 5px;
+      display: none;
+      z-index: 10;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    }
+
+    #mini-toolbar button {
+      background: none;
+      border: none;
+      color: white;
+      cursor: pointer;
+      padding: 5px 8px;
+      font-size: 16px;
+      line-height: 1;
+      vertical-align: middle;
+    }
+
+    #mini-toolbar button:hover {
+      background: #495057;
+    }
+
+    #mini-toolbar input[type="color"] {
+      width: 20px;
+      height: 20px;
+      border: none;
+      padding: 0;
+      background: none;
+      vertical-align: middle;
+      cursor: pointer;
+    }
+
+    .toolbar-separator {
+      border-left: 1px solid #6c757d;
+      margin: 0 5px;
+    }
+
+    .toggle-button {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      padding: 0.25rem 0;
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.9rem;
+    }
+
+    .toggle-button:hover {
+      color: var(--primary-color);
+    }
+
+    .toggle-icon {
+      transition: transform 0.2s ease-in-out;
+      margin-right: 0.5rem;
+      padding: 0.5rem;
+    }
+
+    .block.is-collapsed .block-content {
+      display: none;
+    }
+
+    .block.is-collapsed .block-header {
+      border-bottom: none;
+    }
+
+    .block.is-collapsed .toggle-icon {
+      transform: rotate(-90deg);
+    }
+
+    .block-divider {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.5rem 1rem;
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
+
+    .block-divider>span {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .block:not(.block-divider) .block-header {
+      border-left: 4px solid #6c757d;
+    }
+
+    .block[data-type="text"] .block-header {
+      background-color: #e8f5e8;
+      border-left-color: #4caf50;
+    }
+
+    .block[data-type="summary"] .block-header {
+      background-color: #e7f3ff;
+      border-left-color: #0d6efd;
+    }
+
+    .block[data-type="prompt"] .block-header {
+      background-color: #e9ecef;
+      border-left-color: #6c757d;
+    }
+
+    .block[data-type="points"] .block-header {
+      background-color: #fff9e6;
+      border-left-color: #ffc107;
+    }
+
+    .block[data-type="faq"] .block-header,
+    .block[data-type="glossary"] .block-header {
+      background-color: #e6f9f0;
+      border-left-color: #198754;
+    }
+
+    .block[data-type="caution"] .block-header {
+      background-color: #fff0f1;
+      border-left-color: #dc3545;
+    }
+
+    .block[data-type="image"] .block-header {
+      background-color: #f3e9ff;
+      border-left-color: #6f42c1;
+    }
+
+    .block[data-type="feedback"] .block-header {
+      background-color: #fff3e0;
+      border-left-color: #fd7e14;
+    }
+
+    .block[data-type="fancy-divider"] .block-header {
+      background-color: #e8f5f0;
+      border-left-color: #39a17d;
+    }
+
+    .block[data-type="step-box"] .block-header {
+      background-color: #fff3e0;
+      border-left-color: #ff9800;
+    }
+
+    .block[data-type="content-box"] .block-header {
+      background-color: #fff3e0;
+      border-left-color: #ff9800;
+    }
+
+    .block[data-type="highlight-box"] .block-header {
+      background-color: #fff3e0;
+      border-left-color: #ff9800;
+    }
+
+    .block[data-type="main-title"] .block-header {
+      background-color: #f3e5f5;
+      border-left-color: #9c27b0;
+    }
+
+    .block[data-type="learning-step"] .block-header {
+      background-color: #f3e5f5;
+      border-left-color: #9c27b0;
+    }
+
+    .block[data-type="table-of-contents"] .block-header {
+      background-color: #f3e5f5;
+      border-left-color: #9c27b0;
+    }
+
+    .block[data-type="info-box"] .block-header {
+      background-color: #f3e5f5;
+      border-left-color: #9c27b0;
+    }
+
+    .block[data-type="page-intro"] .block-header {
+      background-color: #f3e5f5;
+      border-left-color: #9c27b0;
+    }
+
+    .block[data-type="schedule-table"] .block-header {
+      background-color: #f3e5f5;
+      border-left-color: #9c27b0;
+    }
+
+    .block[data-type="highlight-bar"] .block-header {
+      background-color: #f3e5f5;
+      border-left-color: #9c27b0;
+    }
+
+    .block[data-type="button-link"] .block-header {
+      background-color: #f3e5f5;
+      border-left-color: #9c27b0;
+    }
+
+    .block[data-type="notice-text"] .block-header {
+      background-color: #f3e5f5;
+      border-left-color: #9c27b0;
+    }
+
+    /* コンテナブロック用のスタイル */
+    .container-block {
+      position: relative;
+    }
+
+    .container-children {
+      min-height: 60px;
+      border: 2px dashed #dee2e6;
+      border-radius: 0.5rem;
+      margin: 1rem 0;
+      padding: 1rem;
+      background-color: #f8f9fa;
+    }
+
+    .container-children:empty::before {
+      content: 'ここにパーツをドロップしてください';
+      color: #6c757d;
+      font-style: italic;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 40px;
+    }
+
+    .container-children .block {
+      margin-bottom: 0.5rem;
+    }
+
+    .container-children .block:last-child {
+      margin-bottom: 0;
+    }
+
+    /* 画像編集機能 */
+    .editable-content img {
+      max-width: 100%;
+      height: auto;
+      cursor: pointer;
+    }
+
+    .editable-content img.is-selected-for-editing {
+      outline: 3px solid var(--primary-color);
+      box-shadow: 0 0 8px rgba(13, 110, 253, 0.5);
+    }
+
+    #image-editor-panel {
+      position: absolute;
+      background: var(--bg-white);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+      z-index: 20;
+      padding: 1.2rem;
+      width: 320px;
+      display: none;
+      box-sizing: border-box;
+    }
+
+    #image-editor-panel h4 {
+      margin-top: 0;
+      font-size: 1.1rem;
+      margin-bottom: 1rem;
+      color: var(--text-primary);
+    }
+
+    #image-editor-panel .form-group {
+      margin-bottom: 1rem;
+    }
+
+    #image-editor-panel .form-group label {
+      font-size: 0.9rem;
+      font-weight: 500;
+      margin-bottom: 0.5rem;
+    }
+
+    #image-editor-panel .size-inputs {
+      display: flex;
+      gap: 0.75rem;
+    }
+
+    #image-editor-panel .slider-group {
+      margin-bottom: 1rem;
+    }
+
+    #image-editor-panel .slider-group label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+
+    #image-editor-panel .slider-group .slider-value {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      font-weight: normal;
+    }
+
+    #image-editor-panel input[type="range"] {
+      width: 100%;
+    }
+
+    #image-editor-panel .quick-buttons {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    #image-editor-panel .quick-btn {
+      flex: 1;
+      padding: 0.4rem 0.6rem;
+      font-size: 0.8rem;
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
+      cursor: pointer;
+      text-align: center;
+    }
+
+    #image-editor-panel .quick-btn:hover {
+      background: #e9ecef;
+    }
+
+    #image-editor-panel .quick-btn.active {
+      background: var(--primary-color);
+      color: white;
+      border-color: var(--primary-color);
+    }
+
+    /* 編集画面：schedule-table の追加ルール */
+    .block[data-type="schedule-table"] .item-pair {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.25rem;
+      padding: 0.2rem 0;
+    }
+
+    .block[data-type="schedule-table"] .item-pair .form-group {
+      margin-bottom: 0;
+    }
+
+    /* 日付・時間をさらに狭く */
+    .block[data-type="schedule-table"] .item-pair input[data-itemkey="date"],
+    .block[data-type="schedule-table"] .item-pair input[data-itemkey="time"] {
+      width: 50px;
+      padding: 2px 4px;
+      font-size: 0.85rem;
+    }
+
+    /* URL入力は程よい幅に */
+    .block[data-type="schedule-table"] .item-pair input[data-itemkey="link"] {
+      flex: 1 1 120px;
+      padding: 2px 4px;
+      font-size: 0.9rem;
+    }
+
+    /* 有効チェックボックス＋固定テキストを小さく */
+    .block[data-type="schedule-table"] .item-pair .form-group.checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .block[data-type="schedule-table"] .item-pair .fixed-label {
+      white-space: nowrap;
+      font-size: 0.9rem;
+      margin-left: 0.5rem;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="app-container">
+    <aside class="sidebar">
+      <div class="sidebar-content">
+        <div class="pane-content">
+          <header class="pane-header" style="padding:0 0 1rem 0;">通常パーツ</header>
+          <div class="template-list">
+            <button data-type="text"><i class="bi bi-fonts"></i> テキスト</button>
+            <button data-type="summary"><i class="bi bi-card-text"></i> 説明文</button>
+            <button data-type="image"><i class="bi bi-image"></i> 画像</button>
+            <button data-type="prompt"><i class="bi bi-terminal"></i> 実演プロンプト</button>
+            <button data-type="points"><i class="bi bi-star"></i> 重要ポイント</button>
+            <button data-type="faq"><i class="bi bi-question-circle"></i> よくある質問</button>
+            <button data-type="glossary"><i class="bi bi-book"></i> 用語解説</button>
+            <button data-type="caution"><i class="bi bi-exclamation-triangle"></i> 注意事項</button>
+            <button data-type="feedback"><i class="bi bi-send"></i> 改善フォーム</button>
+            <button data-type="divider"><i class="bi bi-hr"></i> 区切り線</button>
+            <button data-type="fancy-divider"><i class="bi bi-arrow-down"></i> 装飾区切り線</button>
+          </div>
+        </div>
+        <div class="pane-content" style="border-top: 1px solid var(--border-color);">
+          <header class="pane-header" style="padding:1rem 0;">ボックスパーツ</header>
+          <div class="template-list box-parts">
+            <button data-type="step-box"><i class="bi bi-box"></i> ステップボックス</button>
+            <button data-type="content-box"><i class="bi bi-box"></i> コンテンツボックス</button>
+            <button data-type="highlight-box"><i class="bi bi-lightbulb"></i> ハイライトボックス</button>
+          </div>
+        </div>
+        <div class="pane-content" style="border-top: 1px solid var(--border-color);">
+          <header class="pane-header" style="padding:1rem 0;">その他パーツ</header>
+          <div class="template-list other-parts">
+            <button data-type="main-title"><i class="bi bi-badge-3d"></i> メインタイトル</button>
+            <button data-type="table-of-contents"><i class="bi bi-list-nested"></i> 目次</button>
+            <button data-type="info-box"><i class="bi bi-info-square"></i> 情報ボックス</button>
+            <button data-type="page-intro"><i class="bi bi-file-text"></i> ページ説明文</button>
+            <button data-type="schedule-table"><i class="bi bi-table"></i> スケジュール表</button>
+            <button data-type="highlight-bar"><i class="bi bi-bookmark-fill"></i> カラーバー</button>
+            <button data-type="button-link"><i class="bi bi-link-45deg"></i> ボタンリンク</button>
+            <button data-type="notice-text"><i class="bi bi-exclamation-circle"></i> 注意書き</button>
+          </div>
+        </div>
+
+        <div class="pane-content" style="border-top: 1px solid var(--border-color);">
+          <header class="pane-header" style="padding:1rem 0;">HTMLをインポート</header>
+          <div class="form-group">
+            <label>HTMLコードをここに貼り付け</label>
+            <textarea id="import-html-area" style="min-height: 120px;" placeholder="<section>..."></textarea>
+            <button id="import-html-btn" style="width:100%; margin-top: 0.5rem; padding: 0.5rem;">このHTMLで編集を開始</button>
+            <p style="font-size:0.8rem; color: #6c757d; margin-top:0.5rem;">※ 単純な構造のHTMLのみ対応。現在の編集内容は破棄されます。</p>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="editor-pane">
+      <header class="pane-header">コンテンツ編集</header>
+      <div id="editor-blocks"></div>
+    </main>
+
+    <aside class="preview-pane">
+      <header class="pane-header">プレビュー</header>
+      <iframe id="preview-iframe"></iframe>
+    </aside>
+  </div>
+
+  <button id="copy-html-btn" title="CSSを含んだ最終的なHTMLをコピー"><i class="bi bi-clipboard-check"></i> HTMLをコピー</button>
+  <div id="mini-toolbar">
+    <button data-command="bold" title="太字"><i class="bi bi-type-bold"></i></button>
+    <button data-command="underline" title="下線"><i class="bi bi-type-underline"></i></button>
+    <button data-command="strikeThrough" title="取り消し線"><i class="bi bi-type-strikethrough"></i></button>
+    <div class="toolbar-separator"></div>
+    <button title="文字色"><label for="foreColor" style="cursor:pointer; padding:0; margin:0;"><i class="bi bi-palette-fill"></i></label></button><input type="color" id="foreColor" oninput="executeCommand('foreColor', this.value)">
+    <button title="背景色"><label for="backColor" style="cursor:pointer; padding:0; margin:0;"><i class="bi bi-paint-bucket"></i></label></button><input type="color" id="backColor" oninput="executeCommand('backColor', this.value)">
+    <div class="toolbar-separator"></div>
+    <button data-command="createLink" title="リンク作成"><i class="bi bi-link-45deg"></i></button>
+    <button data-command="unlink" title="リンク解除"><i class="bi bi-unlink"></i></button>
+    <div class="toolbar-separator"></div>
+    <button data-command="insertImage" title="カーソル位置に画像挿入"><i class="bi bi-image"></i></button>
+    <div class="toolbar-separator"></div>
+    <button data-command="fontSize-7" title="大"><b style="font-size: 1.2em;">T</b></button>
+    <button data-command="fontSize-5" title="中">T</button>
+    <button data-command="fontSize-3" title="小"><small>T</small></button>
+  </div>
+
+  <div id="image-editor-panel">
+    <h4>画像設定</h4>
+
+    <div class="slider-group">
+      <label>幅 <span class="slider-value" id="width-value">100%</span></label>
+      <input type="range" id="width-slider" min="10" max="100" value="100" step="5">
+      <div class="quick-buttons">
+        <button class="quick-btn" data-width="25">25%</button>
+        <button class="quick-btn" data-width="50">50%</button>
+        <button class="quick-btn active" data-width="100">100%</button>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="img-border-toggle">枠線</label>
+      <select id="img-border-toggle" name="border-toggle">
+          <option value="none">なし</option>
+          <option value="solid">あり</option>
+        </select>
+    </div>
+
+    <div id="border-settings" style="display: none;">
+      <div class="slider-group">
+        <label>枠線の太さ <span class="slider-value" id="border-width-value">1px</span></label>
+        <input type="range" id="border-width-slider" min="1" max="10" value="1" step="1">
+      </div>
+
+      <div class="form-group">
+        <label for="img-border-color">枠線の色</label>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <input type="color" id="img-border-color" value="#000000" style="width: 40px; height: 32px; border: 1px solid #ccc; border-radius: 4px; cursor: pointer;">
+          <span id="border-color-text">#000000</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="img-alt">代替テキスト (alt)</label>
+      <input type="text" id="img-alt" name="alt">
+    </div>
+
+    <div class="form-group">
+      <label for="img-float">配置</label>
+      <select id="img-float" name="float">
+          <option value="none">中央</option>
+          <option value="left">左寄せ</option>
+          <option value="right">右寄せ</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+      <label for="img-margin">余白 (margin)</label>
+      <input type="text" id="img-margin" name="margin" placeholder="例: 1rem, 0 1rem">
+    </div>
+  </div>
+  <script>
+    const state = { blocks: [], previewCss: '', sortableInstances: new Map() };
+    const editorBlocksEl = document.getElementById('editor-blocks');
+    const previewIframe = document.getElementById('preview-iframe');
+    const miniToolbar = document.getElementById('mini-toolbar');
+    
+    const imageEditorPanel = document.getElementById('image-editor-panel');
+    let selectedImage = null;
+    let lastSelectionRange = null;
+    let lastEditableArea = null;
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      // 初期化前に既存のSortableインスタンスを破棄
+      destroyAllSortables();
+      
+      state.previewCss = getDefaultPreviewCss();
+      render();
+      initializeSortable();
+      initializeEventListeners();
+    });
+
+    function getDefaultPreviewCss() {
+      return `
+        /* --- 基本スタイル --- */
+        body { margin: 0; padding: 0; }
+        .video-description-container { font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif; line-height: 1.7; color: #343a40; background-color: #ffffff; padding: 15px 20px; border-radius: 6px; margin: 0; max-width: none; width: 100%; box-sizing: border-box; }
+        a { color: #0d6efd; text-decoration: none; transition: color 0.2s ease; }
+        a:hover { color: #0a58ca; text-decoration: underline; }
+        
+        /* --- ブロック間の余白を一元管理 --- */
+        .block-preview { margin-bottom: 25px; }
+        .video-description-container > .block-preview:last-child { margin-bottom: 0; }
+        .child-block-preview { margin-bottom: 15px; }
+        .child-block-preview:last-child { margin-bottom: 0; }
+        
+        section > h2 { font-size: 1.25em; color: #000000; margin-top: 0; margin-bottom: 15px; padding-left: 16px; position: relative; font-weight: 600; line-height: 1.4; }
+        section > h2::before { content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 5px; height: 18px; background-color: #20c997; border-radius: 2.5px; }
+        .lecture-summary > h2 { margin-bottom: 6px; }
+        .lecture-summary > h2 { margin-bottom: 8px; }
+        .section-important > h2 { color: #856404; }
+        .section-important > h2::before { background-color: #ffc107; }
+        .section-caution > h2 { color: #842029; }
+        .section-caution > h2::before { background-color: #dc3545; }
+        hr.section-divider { border: none; border-top: 1px solid #e9ecef; }
+        .lecture-summary p, .lecture-summary div { font-size: 0.98em; color: #495057; line-height: 1.7; margin: 0; white-space: pre-wrap; word-wrap: break-word; }
+        .content-wrapper { padding: 15px 20px; border-radius: 4px; }
+        .important-content { background-color: #fffbeb; border: 1px solid #ffe58f; }
+        .important-content ul { list-style: none; padding-left: 5px; margin: 0; }
+        .important-content ul li { margin-bottom: 0.6em; padding-left: 20px; position: relative; font-size: 0.95em; color: #664d03; line-height: 1.6; }
+        .important-content ul li:last-child { margin-bottom: 0; }
+        .important-content ul li::before { content: ''; position: absolute; left: 6px; top: 0.6em; width: 6px; height: 6px; background-color: #ffc107; border-radius: 50%; }
+        .caution-content { background-color: #fef4f5; border: 1px solid #f7c6cb; }
+        .caution-content p, .caution-content div { margin: 0; color: #58151c; font-size: 0.95em; font-weight: 500; line-height: 1.6; white-space: pre-wrap; }
+        .faq-item-attractive { background-color: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; margin-bottom: 20px; padding: 15px 20px; }
+        .faq-item-attractive:last-child { margin-bottom: 0; }
+        .faq-question-attractive { font-weight: 600; color: #2c6e49; font-size: 1.05em; margin-bottom: 10px; padding-left: 38px; position: relative; line-height: 1.5; }
+        .faq-question-attractive::before { content: "Q"; position: absolute; left: 0; top: 0; background-color: #4caf50; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.9em; font-weight: bold; }
+        .faq-answer-attractive { color: #495057; font-size: 0.98em; padding-left: 38px; position: relative; line-height: 1.7; word-wrap: break-word; }
+        .faq-answer-attractive::before { content: "A"; position: absolute; left: 0; top: 0; background-color: #ff9800; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.9em; font-weight: bold; }
+        .glossary-section .glossary-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.95em; border: 1px solid #cccccc; }
+        .glossary-section .glossary-table th, .glossary-section .glossary-table td { padding: 11px 14px; text-align: left; vertical-align: top; line-height: 1.6; border-bottom: 1px solid #e0e0e0; }
+        .glossary-section .glossary-table th { background-color: #f0f9f4; color: #155724; font-weight: 600; width: 25%; border-right: 1px solid #cccccc; }
+        .glossary-section .glossary-table td { background-color: #ffffff; width: 75%; word-wrap: break-word; }
+        .glossary-section .glossary-table tr:last-child th, .glossary-section .glossary-table tr:last-child td { border-bottom: none; }
+        .feedback-section { background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 5px; padding: 15px 25px; line-height: 1.6; }
+        .feedback-note { margin-top: 0; margin-bottom: 8px; font-size: 0.8em; color: #6c757d; line-height: 1.5; }
+        .feedback-button { display: inline-flex; align-items: center; background-color: #fd9843; color: #ffffff !important; padding: 8px 12px 8px 16px; border-radius: 4px; text-decoration: none !important; font-weight: 700; font-size: 0.98em; margin-bottom: 15px; transition: background-color 0.2s ease; line-height: 1; border: none; }
+        .feedback-button:hover { background-color: #fd7e14; }
+        .feedback-button-icon { width: 18px; height: 18px; margin-left: 6px; vertical-align: middle; filter: brightness(0) invert(1); }
+        .qa-guidance { padding: 0; margin-top: 15px; margin-bottom: 0; font-size: 0.95em; color: #343a40; font-weight: 700; line-height: 1.6; }
+        .prompt-section .prompt-item { background-color: #fff; border: 1px solid #dee2e6; border-radius: 5px; padding: 15px 20px; margin-top: 15px; }
+        .prompt-section .prompt-item:first-child { margin-top: 0; }
+        .prompt-section .prompt-item h3 { font-size: 1.1em; color: #495057; margin: 0 0 10px 0; font-weight: 600; display: flex; align-items: center; }
+        .prompt-section .prompt-item hr.prompt-divider { border: none; border-top: 1px dashed #ced4da; margin: 15px 0; }
+        .prompt-section .prompt-text { font-size: 0.98em; color: #495057; line-height: 1.7; word-wrap: break-word; }
+        .prompt-section .prompt-text-before { margin-bottom: 15px; }
+        .prompt-section .prompt-text-after { margin-top: 15px; }
+        .prompt-section .prompt-item pre { background-color: #f8f9fa; padding: 12px 15px; border-radius: 4px; border: none; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word; font-size: 0.9em; line-height: 1.65; margin: 0; }
+        .prompt-section .prompt-item code { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace; color: #212529; }
+        
+        /* --- メインタイトル スタイル --- */
+        .main-title { background-color: #39a17d; color: #fff; padding: 4px 20px; font-size: 1.4em; font-weight: bold; margin: 20px 0; border-radius: 0; }
+        
+        /* --- 学習ステップ スタイル --- */
+        .learning-step { background-color: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); margin: 20px 0; padding: 8px; overflow: hidden; }
+        .learning-step h3 { background: #fff; color: #3cb371; padding: 15px 20px 10px; font-size: 1.2em; font-weight: bold; border-bottom: 2px dashed #3cb371; margin: 10px 20px 20px; }
+        .learning-step .step-content { padding: 15px 25px 25px; font-size: 0.95em; }
+        
+        /* --- 目次 スタイル --- */
+        .table-of-contents-box { background-color: #f0f0f0; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        .table-of-contents-box h3 { margin-top: 0; font-size: 1.2em; }
+        .table-of-contents-box ul { list-style-type: none; padding-left: 0; line-height: 1.8; }
+        .table-of-contents-box li { margin-bottom: 5px; }
+        .table-of-contents-box a { color: #007bff; text-decoration: none; }
+        .table-of-contents-box a:hover { text-decoration: underline; }
+        
+        /* --- ハイライトボックス（旧） スタイル --- */
+        .highlight-box-old { background-color: #fff3cd; padding: 12px 15px; border: 1px solid #ffe4b5; border-radius: 5px; font-weight: bold; text-align: center; margin: 20px 0; }
+        .highlight-box-old.yellow-strong { background-color: #ffe082; padding: 15px 20px; }
+        
+        /* --- 情報ボックス スタイル --- */
+        .info-box { border: 1px solid #ccc; padding: 15px; background-color: #f9f9f9; border-radius: 5px; margin: 20px 0; }
+        .info-box h4 { margin-top: 0; font-size: 1.1em; color: #333; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-bottom: 10px; }
+        .info-box .info-item { margin-bottom: 8px; }
+        .info-box .info-item strong { display: inline-block; width: 120px; color: #555; }
+        
+        /* --- 装飾区切り線 スタイル --- */
+        .fancy-divider { height: 40px; width: 70%; background-image: url('https://expt-pic.imgix.net/site_f_svg/v1/separator/fade_triangle/39a17d'); background-repeat: no-repeat; background-position: center; background-size: 100% 100%; margin: 20px auto; }
+        .fancy-divider.green { background-image: url('https://expt-pic.imgix.net/site_f_svg/v1/separator/fade_triangle/39a17d'); }
+        .fancy-divider.blue { background-image: url('https://expt-pic.imgix.net/site_f_svg/v1/separator/fade_triangle/1976d2'); }
+        
+        /* --- ページ説明文 スタイル --- */
+        .page-intro { font-size: 1em; color: #333; margin: 20px 0 25px; font-weight: bold; line-height: 1.6; }
+        .page-intro .highlight-marker { background: linear-gradient(to top, yellow 40%, transparent 40%); color: red; font-weight: bold; }
+        
+        /* --- コンテンツボックス スタイル --- */
+        .content-box { background-color: #f2fdf9; border: 1px solid #bde0d5; padding: 20px; border-radius: 6px; margin: 20px 0 30px; }
+        
+        /* --- スケジュール表 スタイル --- */
+        .schedule-table { background-color: #ffffff; border: 1px solid #ccc; border-collapse: collapse; width: 100%; margin: 10px 0 20px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); }
+        .schedule-table td { padding: 12px; text-align: center; border: 1px solid #ddd; }
+        .schedule-table th { padding: 12px; text-align: center; border: 1px solid #ddd; background-color: #f5f5f5; font-weight: bold; }
+        
+        /* --- カラーバー スタイル --- */
+        .highlight-bar { color: white; padding: 5px 16px; font-weight: bold; border-radius: 5px; margin: 25px 0 10px; font-size: 1.1em; display: flex; align-items: center; }
+        .highlight-bar.orange { background-color: #ff9800; }
+        .highlight-bar.blue { background-color: #1976d2; }
+        
+        /* --- ボタンリンク スタイル --- */
+        .button-link { background-color: #00b16a; color: white !important; text-decoration: none !important; padding: 6px 16px; border-radius: 4px; font-weight: bold; display: inline-block; transition: background-color 0.2s; }
+        .button-link:hover { background-color: #009e5a; color: white !important; text-decoration: none !important; }
+        .button-link.disabled { background-color: #cccccc; pointer-events: none; }
+        
+        /* --- テキスト スタイル --- */
+        .text-content { font-size: 1em; line-height: 1.7; margin: 20px 0; }
+        
+        /* --- ボックスパーツ スタイル --- */
+        .step-box { background-color: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); margin: 20px 0; padding: 8px; overflow: hidden; }
+        .step-box h3 { background: #fff; color: #3cb371; padding: 15px 20px 10px; font-size: 1.2em; font-weight: bold; border-bottom: 2px dashed #3cb371; margin: 10px 20px 20px; }
+        .step-box .step-content { padding: 15px 25px 25px; font-size: 0.95em; }
+        
+        .content-box-container { background-color: #f2fdf9; border: 1px solid #bde0d5; padding: 20px; border-radius: 6px; margin: 20px 0 30px; }
+        
+        .highlight-box-container { background-color: #fff3cd; padding: 12px 15px; border: 1px solid #ffe4b5; border-radius: 5px; font-weight: bold; text-align: center; margin: 20px 0; }
+        .highlight-box-container.strong { background-color: #ffe082; padding: 15px 20px; }
+        
+        /* --- 注意書き スタイル --- */
+        .notice-text { color: #d9534f; font-weight: bold; margin: 10px 0; font-size: 0.95em; }
+      `;
+    }
+
+    function initializeEventListeners() {
+      document.querySelectorAll('.template-list').forEach(templateList => {
+        templateList.addEventListener('click', e => { 
+          if (e.target.matches('button[data-type]')) addBlock(e.target.dataset.type); 
+        });
+      });
+      document.getElementById('import-html-btn').addEventListener('click', handleHtmlImport);
+      document.getElementById('copy-html-btn').addEventListener('click', () => {
+          const cssBlock = `<style>\n${state.previewCss.trim()}\n</style>`;
+          const contentHtml = generatePreviewHtml(true);
+          navigator.clipboard.writeText(`${cssBlock}\n\n${contentHtml}`).then(() => alert('CSSを含むHTMLコードをコピーしました！'));
+      });
+      
+      editorBlocksEl.addEventListener('input', e => {
+        if (imageEditorPanel.contains(e.target)) return;
+        if (selectedImage && !e.target.closest('.editable-content')) deselectImage();
+        
+        const { block, key, itemIndex, itemKey } = getEventData(e);
+        if (!block) return;
+            let value;
+    if (e.target.type === 'checkbox') {
+      // チェックボックスは checked プロパティを使う
+      value = e.target.checked;
+    } else {
+      value = e.target.isContentEditable
+        ? e.target.innerHTML
+        : e.target.value;
+    }
+        
+        if ((key === 'enabled' && block.type === 'button-link') || 
+            (itemKey === 'enabled' && block.type === 'schedule-table')) {
+          value = value === 'true';
+        }
+        
+        if (itemIndex !== null) block.data.items[itemIndex][itemKey] = value;
+        else block.data[key] = value;
+        renderPreview();
+      });
+      
+      editorBlocksEl.addEventListener('click', e => {
+        if (e.target.tagName === 'IMG' && e.target.closest('.editable-content')) {
+            selectImage(e.target);
+            return;
+        }
+        if (selectedImage && !e.target.closest('#image-editor-panel')) {
+            deselectImage();
+        }
+
+        const { block, action, itemIndex } = getEventData(e);
+        if (!block) return;
+        const button = e.target.closest('button[data-action]');
+        if (button) {
+            const actions = {
+              delete: () => { if (confirm('このブロックを削除しますか？')) { deleteBlock(block.id); } },
+              duplicate: () => duplicateBlock(block.id),
+              'add-item': () => addItem(block.id),
+              'delete-item': () => deleteItem(block.id, itemIndex),
+              'toggle-content': () => {
+                  const content = button.nextElementSibling;
+                  const icon = button.querySelector('i');
+                  if (content.style.display === 'none') {
+                      content.style.display = 'block';
+                      icon.className = 'bi bi-dash-circle-fill';
+                  } else {
+                      content.style.display = 'none';
+                      icon.className = 'bi bi-plus-circle-fill';
+                  }
+              }
+            };
+            if (actions[button.dataset.action]) actions[button.dataset.action]();
+        } else if (e.target.closest('.block-header')) {
+             if (!e.target.isContentEditable && !e.target.closest('.block-actions')) {
+                e.currentTarget.querySelector(`[data-id="${block.id}"]`).classList.toggle('is-collapsed');
+             }
+        }
+      });
+      
+      document.addEventListener('selectionchange', () => {
+        const selection = window.getSelection();
+        const parent = selection.anchorNode?.parentElement.closest('.editable-content');
+        if (selectedImage || selection.isCollapsed || !parent) {
+            miniToolbar.style.display = 'none';
+            return;
+        }
+        const range = selection.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+        miniToolbar.style.display = 'flex';
+        miniToolbar.style.left = `${rect.left + window.scrollX + rect.width / 2 - miniToolbar.offsetWidth / 2}px`;
+        miniToolbar.style.top = `${rect.top + window.scrollY - miniToolbar.offsetHeight - 8}px`;
+      });
+      
+      miniToolbar.addEventListener('mousedown', e => e.preventDefault());
+      miniToolbar.addEventListener('click', e => {
+        const command = e.target.closest('button')?.dataset.command;
+        if (command) executeCommand(command);
+      });
+      
+      editorBlocksEl.addEventListener('focusin', (e) => {
+        if (e.target.closest('.editable-content')) {
+            lastEditableArea = e.target.closest('.editable-content');
+        }
+      });
+      
+      editorBlocksEl.addEventListener('focusout', (e) => {
+        if (e.target.closest('.editable-content')) {
+            const selection = window.getSelection();
+            if (selection.rangeCount > 0) {
+                lastSelectionRange = selection.getRangeAt(0).cloneRange();
+            }
+        }
+      }, true);
+      
+      imageEditorPanel.addEventListener('mousedown', e => e.stopPropagation());
+      imageEditorPanel.addEventListener('mouseup', e => e.stopPropagation());
+      imageEditorPanel.addEventListener('input', handleImagePanelChange);
+      imageEditorPanel.addEventListener('change', handleImagePanelChange);
+      imageEditorPanel.addEventListener('click', e => {
+        e.stopPropagation();
+        if (e.target.classList.contains('quick-btn')) {
+          const width = e.target.dataset.width;
+          const widthSlider = document.getElementById('width-slider');
+          widthSlider.value = width;
+          handleImagePanelChange({ target: widthSlider });
+        }
+      });
+
+      function handleImagePanelChange(e) {
+        if (!selectedImage) return;
+        const { name, value, id } = e.target;
+        
+        if (id === 'width-slider') {
+          const widthValue = value + '%';
+          selectedImage.style.width = widthValue;
+          document.getElementById('width-value').textContent = widthValue;
+          updateQuickButtonsActive(value);
+        } else if (id === 'img-border-toggle') {
+          const borderSettings = document.getElementById('border-settings');
+          if (value === 'none') {
+            selectedImage.style.border = '';
+            borderSettings.style.display = 'none';
+          } else {
+            borderSettings.style.display = 'block';
+            const width = document.getElementById('border-width-slider').value;
+            const color = document.getElementById('img-border-color').value;
+            selectedImage.style.border = `${width}px solid ${color}`;
+          }
+        } else if (id === 'border-width-slider') {
+          const widthValue = value + 'px';
+          document.getElementById('border-width-value').textContent = widthValue;
+          const color = document.getElementById('img-border-color').value;
+          selectedImage.style.border = `${value}px solid ${color}`;
+        } else if (id === 'img-border-color') {
+          document.getElementById('border-color-text').textContent = value;
+          const width = document.getElementById('border-width-slider').value;
+          selectedImage.style.border = `${width}px solid ${value}`;
+        } else if (name === 'alt') {
+          selectedImage.alt = value;
+        } else if (name === 'float') {
+          selectedImage.style.float = value;
+          if (value !== 'none') {
+            selectedImage.style.margin = value === 'left' ? '0 1rem 1rem 0' : '0 0 1rem 1rem';
+            document.getElementById('img-margin').value = selectedImage.style.margin;
+          }
+        } else if (name === 'margin') {
+          selectedImage.style.margin = value;
+        }
+        
+        const editableArea = selectedImage.closest('.editable-content');
+        if (editableArea) {
+          editableArea.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+      }
+      
+      document.addEventListener('click', (e) => {
+         if (selectedImage && 
+             (imageEditorPanel.contains(e.target) || 
+              e.target === selectedImage || 
+              miniToolbar.contains(e.target))) {
+            return;
+         }
+         if (selectedImage) {
+            deselectImage();
+         }
+      });
+      // 編集画面の change を拾う
+editorBlocksEl.addEventListener('change', e => {
+  // schedule-table の有効フラグ用チェックボックス
+  if (!e.target.matches('input[type="checkbox"][data-itemkey="enabled"]')) return;
+
+  const { block, itemIndex, itemKey } = getEventData(e);
+  if (!block || itemIndex == null) return;
+
+  // Boolean で状態更新
+  block.data.items[itemIndex][itemKey] = e.target.checked;
+  renderPreview();
+});
+
+    }
+
+    function executeCommand(command, value = null) {
+      if (command === 'insertImage') {
+        const url = prompt('画像URLを入力してください:', 'https://');
+        if (url) {
+          const img = document.createElement('img');
+          img.src = url;
+          img.alt = '画像';
+          img.style.maxWidth = '100%';
+
+          let insertTarget = null;
+          const selection = window.getSelection();
+          
+          if (selection.rangeCount > 0) {
+              const range = selection.getRangeAt(0);
+              const editableParent = range.startContainer.parentElement?.closest('.editable-content');
+              if (editableParent) {
+                  insertTarget = { type: 'selection', range: range };
+              }
+          }
+          
+          if (!insertTarget && lastSelectionRange) {
+              const editableParent = lastSelectionRange.startContainer.parentElement?.closest('.editable-content');
+              if (editableParent && document.contains(editableParent)) {
+                  selection.removeAllRanges();
+                  selection.addRange(lastSelectionRange);
+                  insertTarget = { type: 'lastRange', range: lastSelectionRange };
+              }
+          }
+          
+          if (!insertTarget && lastEditableArea && document.contains(lastEditableArea)) {
+              const range = document.createRange();
+              range.selectNodeContents(lastEditableArea);
+              range.collapse(false);
+              selection.removeAllRanges();
+              selection.addRange(range);
+              insertTarget = { type: 'lastArea', range: range };
+          }
+          
+          if (!insertTarget) {
+              const firstEditableArea = editorBlocksEl.querySelector('.editable-content');
+              if (firstEditableArea) {
+                  const range = document.createRange();
+                  range.selectNodeContents(firstEditableArea);
+                  range.collapse(false);
+                  selection.removeAllRanges();
+                  selection.addRange(range);
+                  insertTarget = { type: 'first', range: range };
+              }
+          }
+          
+          if (insertTarget) {
+              insertTarget.range.deleteContents();
+              insertTarget.range.insertNode(img);
+              
+              const newRange = document.createRange();
+              newRange.setStartAfter(img);
+              newRange.collapse(true);
+              selection.removeAllRanges();
+              selection.addRange(newRange);
+              
+              const editableArea = img.closest('.editable-content');
+              if (editableArea) {
+                  editableArea.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
+                  selectImage(img);
+              }
+          } else {
+              alert('編集可能なエリアが見つかりません。説明文ブロックなどを追加してから画像を挿入してください。');
+          }
+        }
+        return;
+      }
+
+      if (command === 'createLink') { value = prompt('リンク先のURLを入力してください:', 'https://'); if (!value) return; }
+      document.execCommand('styleWithCSS', false, true);
+      if (command.startsWith('fontSize-')) { document.execCommand('fontSize', false, command.split('-')[1]); } 
+      else { document.execCommand(command, false, value); }
+      document.execCommand('styleWithCSS', false, false);
+      const activeEl = document.activeElement;
+      if(activeEl?.isContentEditable) activeEl.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+
+    function selectImage(img) {
+        if (selectedImage) {
+            selectedImage.classList.remove('is-selected-for-editing');
+        }
+        selectedImage = img;
+        selectedImage.classList.add('is-selected-for-editing');
+        
+        const currentWidth = selectedImage.style.width || '100%';
+        const widthPercent = parseInt(currentWidth) || 100;
+        
+        document.getElementById('width-slider').value = widthPercent;
+        document.getElementById('width-value').textContent = widthPercent + '%';
+        updateQuickButtonsActive(widthPercent);
+        
+        const currentBorder = selectedImage.style.border || '';
+        const borderToggle = document.getElementById('img-border-toggle');
+        const borderSettings = document.getElementById('border-settings');
+        
+        if (currentBorder) {
+          borderToggle.value = 'solid';
+          borderSettings.style.display = 'block';
+          
+          const borderMatch = currentBorder.match(/(\d+)px.*?(#[a-fA-F0-9]{6}|#[a-fA-F0-9]{3}|rgb\([^)]+\)|[a-z]+)/);
+          if (borderMatch) {
+            const width = borderMatch[1] || '1';
+            const color = borderMatch[2] || '#000000';
+            
+            document.getElementById('border-width-slider').value = width;
+            document.getElementById('border-width-value').textContent = width + 'px';
+            document.getElementById('img-border-color').value = color.startsWith('#') ? color : '#000000';
+            document.getElementById('border-color-text').textContent = color.startsWith('#') ? color : '#000000';
+          }
+        } else {
+          borderToggle.value = 'none';
+          borderSettings.style.display = 'none';
+        }
+        
+        document.getElementById('img-margin').value = selectedImage.style.margin || '';
+        document.getElementById('img-float').value = selectedImage.style.float || 'none';
+        document.getElementById('img-alt').value = selectedImage.alt || '';
+
+        const rect = selectedImage.getBoundingClientRect();
+        const editorRect = editorBlocksEl.getBoundingClientRect();
+        const panelHeight = 350;
+        
+        let top = rect.bottom + editorBlocksEl.scrollTop + 10;
+        let left = Math.max(10, rect.left - editorRect.left);
+        
+        if (top + panelHeight > window.innerHeight) {
+            top = rect.top + editorBlocksEl.scrollTop - panelHeight - 10;
+        }
+        
+        if (left + 320 > editorRect.width) {
+            left = editorRect.width - 330;
+        }
+        
+        imageEditorPanel.style.display = 'block';
+        imageEditorPanel.style.top = `${top}px`;
+        imageEditorPanel.style.left = `${left}px`;
+    }
+
+    function updateQuickButtonsActive(width) {
+        document.querySelectorAll('.quick-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.width == width);
+        });
+    }
+
+    function deselectImage() {
+        if (selectedImage) {
+            selectedImage.classList.remove('is-selected-for-editing');
+            selectedImage = null;
+        }
+        imageEditorPanel.style.display = 'none';
+    }
+
+    function handleHtmlImport() {
+      const htmlContent = document.getElementById('import-html-area').value.trim();
+      if (!htmlContent) {
+        alert('HTMLコードを入力してください。');
+        return;
+      }
+      
+      if (!confirm('現在の編集内容は破棄されます。HTMLをインポートしますか？')) {
+        return;
+      }
+      
+      try {
+        const importedBlocks = parseHtmlToBlocks(htmlContent);
+        if (importedBlocks.length === 0) {
+          alert('インポート可能なブロックが見つかりませんでした。');
+          return;
+        }
+        
+        state.blocks = importedBlocks;
+        render();
+        document.getElementById('import-html-area').value = '';
+        alert(`${importedBlocks.length}個のブロックをインポートしました。`);
+      } catch (error) {
+        console.error('HTMLインポートエラー:', error);
+        alert('HTMLのパースに失敗しました。正しい形式のHTMLを入力してください。');
+      }
+    }
+    
+    function parseHtmlToBlocks(htmlString) {
+      const blocks = [];
+      let blockId = Date.now();
+      
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = htmlString;
+      
+      const elements = Array.from(tempDiv.children);
+      
+      elements.forEach(element => {
+        const tagName = element.tagName.toLowerCase();
+        const className = element.className;
+        const textContent = element.textContent.trim();
+        const innerHTML = element.innerHTML;
+        
+        if (tagName === 'section') {
+          const h2 = element.querySelector('h2');
+          const title = h2 ? h2.textContent.trim() : 'セクション';
+          
+          if (className.includes('lecture-summary')) {
+            blocks.push({
+              id: blockId++,
+              type: 'summary',
+              data: { title, content: getContentWithoutTitle(element) }
+            });
+          } else if (className.includes('section-caution')) {
+            blocks.push({
+              id: blockId++,
+              type: 'caution',
+              data: { title, content: getContentWithoutTitle(element) }
+            });
+          } else if (className.includes('section-important')) {
+            blocks.push({
+              id: blockId++,
+              type: 'points',
+              data: { title, content: getListContent(element) }
+            });
+          } else if (className.includes('faq-section')) {
+            blocks.push({
+              id: blockId++,
+              type: 'faq',
+              data: { title, items: parseFaqItems(element) }
+            });
+          } else if (className.includes('glossary-section')) {
+            blocks.push({
+              id: blockId++,
+              type: 'glossary',
+              data: { title, items: parseGlossaryItems(element) }
+            });
+          } else if (className.includes('prompt-section')) {
+            blocks.push({
+              id: blockId++,
+              type: 'prompt',
+              data: { title, items: parsePromptItems(element) }
+            });
+          }
+        }
+        
+        else if (tagName === 'hr') {
+          if (className.includes('section-divider')) {
+            blocks.push({ id: blockId++, type: 'divider', data: {} });
+          } else if (className.includes('fancy-divider')) {
+            blocks.push({ id: blockId++, type: 'fancy-divider', data: { color: 'green' } });
+          }
+        }
+        
+        else if (className.includes('main-title')) {
+          blocks.push({
+            id: blockId++,
+            type: 'main-title',
+            data: { title: textContent }
+          });
+        }
+        
+        else if (className.includes('learning-step')) {
+          const h3 = element.querySelector('h3');
+          const title = h3 ? h3.textContent.trim() : 'ステップ';
+          blocks.push({
+            id: blockId++,
+            type: 'learning-step',
+            data: { title, content: getContentWithoutTitle(element) }
+          });
+        }
+        
+        else if (className.includes('page-intro')) {
+          blocks.push({
+            id: blockId++,
+            type: 'page-intro',
+            data: { content: innerHTML }
+          });
+        }
+        
+        else if (className.includes('content-box')) {
+          blocks.push({
+            id: blockId++,
+            type: 'content-box',
+            data: { children: [] }
+          });
+        }
+        
+        else if (className.includes('highlight-box')) {
+          const isStrong = className.includes('yellow-strong');
+          blocks.push({
+            id: blockId++,
+            type: 'highlight-box',
+            data: { style: isStrong ? 'strong' : 'normal', children: [] }
+          });
+        }
+        
+        else if (className.includes('highlight-bar')) {
+          const isBlue = className.includes('blue');
+          blocks.push({
+            id: blockId++,
+            type: 'highlight-bar',
+            data: { content: textContent, color: isBlue ? 'blue' : 'orange' }
+          });
+        }
+        
+        else if (className.includes('notice-text')) {
+          blocks.push({
+            id: blockId++,
+            type: 'notice-text',
+            data: { content: innerHTML }
+          });
+        }
+        
+        else if (className.includes('feedback-section')) {
+          blocks.push({
+            id: blockId++,
+            type: 'feedback',
+            data: { contentName: '' }
+          });
+        }
+        
+        else if (tagName === 'img' || (tagName === 'p' && element.querySelector('img'))) {
+          const img = tagName === 'img' ? element : element.querySelector('img');
+          blocks.push({
+            id: blockId++,
+            type: 'image',
+            data: {
+              title: '画像',
+              src: img.src || '',
+              alt: img.alt || '画像',
+              width: img.style.width || '100%',
+              height: img.style.height || 'auto'
+            }
+          });
+        }
+      });
+      
+      return blocks;
+    }
+    
+    function getContentWithoutTitle(element) {
+      const clone = element.cloneNode(true);
+      const h2 = clone.querySelector('h2');
+      const h3 = clone.querySelector('h3');
+      if (h2) h2.remove();
+      if (h3) h3.remove();
+      return clone.innerHTML.trim();
+    }
+    
+    function getListContent(element) {
+      const ul = element.querySelector('ul');
+      if (!ul) return '';
+      const items = Array.from(ul.querySelectorAll('li'));
+      return items.map(li => '・' + li.textContent.trim()).join('<br>');
+    }
+    
+    function parseFaqItems(element) {
+      const items = [];
+      const faqItems = element.querySelectorAll('.faq-item-attractive');
+      faqItems.forEach(item => {
+        const question = item.querySelector('.faq-question-attractive');
+        const answer = item.querySelector('.faq-answer-attractive');
+        if (question && answer) {
+          items.push({
+            q: question.textContent.trim(),
+            a: answer.innerHTML.trim()
+          });
+        }
+      });
+      return items.length > 0 ? items : [{ q: '質問', a: '' }];
+    }
+    
+    function parseGlossaryItems(element) {
+      const items = [];
+      const rows = element.querySelectorAll('table tr');
+      rows.forEach(row => {
+        const th = row.querySelector('th');
+        const td = row.querySelector('td');
+        if (th && td) {
+          items.push({
+            term: th.textContent.trim(),
+            description: td.innerHTML.trim()
+          });
+        }
+      });
+      return items.length > 0 ? items : [{ term: '用語', description: '' }];
+    }
+    
+    function parsePromptItems(element) {
+      const items = [];
+      const promptItems = element.querySelectorAll('.prompt-item');
+      promptItems.forEach(item => {
+        const h3 = item.querySelector('h3');
+        const beforeText = item.querySelector('.prompt-text-before');
+        const afterText = item.querySelector('.prompt-text-after');
+        const code = item.querySelector('code');
+        
+        items.push({
+          promptName: h3 ? h3.textContent.trim() : 'プロンプト名',
+          beforeText: beforeText ? beforeText.innerHTML.trim() : '',
+          promptBody: code ? code.textContent.trim() : '',
+          afterText: afterText ? afterText.innerHTML.trim() : ''
+        });
+      });
+      return items.length > 0 ? items : [{ promptName: 'プロンプト名', beforeText: '', promptBody: '', afterText: '' }];
+    }
+
+    const addBlock = (type, initialData = {}, containerId = null) => {
+      const templates = { 
+        text: { content: 'ここにテキストを入力してください。' },
+        summary: { title: '説明文', content: '' }, 
+        image: { title: '画像', src: initialData.src || '', alt: initialData.alt || '画像', width: '100%', height: 'auto' }, 
+        prompt: { title: '実演プロンプト', items: [{ promptName: 'プロンプト名', beforeText: '', promptBody: 'ここにプロンプト本文を入力...', afterText: '' }] }, 
+        points: { title: '重要ポイント', content: '・ポイント1<br>・ポイント2' }, 
+        faq: { title: 'よくある質問', items: [{ q: '質問', a: '' }] }, 
+        glossary: { title: '用語解説', items: [{ term: '用語', description: '' }] }, 
+        caution: { title: '注意事項', content: '' }, 
+        feedback: { contentName: '' }, 
+        divider: {},
+        'fancy-divider': { color: 'green' },
+        'step-box': { title: 'ステップタイトル', children: [] },
+        'content-box': { children: [] },
+        'highlight-box': { style: 'normal', children: [] },
+        'main-title': { title: 'メインタイトル' },
+        'learning-step': { title: 'ステップタイトル', content: 'ステップの内容を入力してください。' },
+        'table-of-contents': { title: '目次', items: [{ text: '項目1', link: '#section1' }, { text: '項目2', link: '#section2' }] },
+        'info-box': { title: '情報ボックス', items: [{ label: 'ラベル', value: '値' }] },
+        'page-intro': { content: 'ページの説明文を入力してください。' },
+        'schedule-table': { title: 'スケジュール', items: [{ date: '日付', time: '時間', description: '内容', link: '', linkText: '詳細・申込', enabled: true }] },
+        'highlight-bar': { content: 'カラーバーのテキスト', color: 'orange' },
+        'button-link': { text: 'ボタンテキスト', url: 'https://example.com', enabled: true },
+        'notice-text': { content: '注意書きの内容を入力してください。' }
+      };
+      
+      const newBlock = { id: Date.now(), type, data: JSON.parse(JSON.stringify(templates[type])) };
+      
+      if (containerId) {
+        const container = findBlock(containerId);
+        if (container && container.data.children) {
+          container.data.children.push(newBlock);
+        }
+      } else {
+        state.blocks.push(newBlock);
+      }
+      
+      render();
+    };
+
+    function deleteBlock(blockId) {
+      state.blocks = state.blocks.filter(block => {
+        if (block.id == blockId) {
+          return false;
+        }
+        if (block.data.children) {
+          block.data.children = block.data.children.filter(child => child.id != blockId);
+        }
+        return true;
+      });
+      render();
+    }
+
+    const duplicateBlock = (id) => { 
+      const index = state.blocks.findIndex(b => b.id == id); 
+      if (index === -1) return; 
+      const newBlock = JSON.parse(JSON.stringify(state.blocks[index])); 
+      newBlock.id = Date.now(); 
+      
+      if (newBlock.data.children) {
+        newBlock.data.children.forEach(child => {
+          child.id = Date.now() + Math.random();
+        });
+      }
+      
+      state.blocks.splice(index + 1, 0, newBlock); 
+      render(); 
+    };
+
+    const addItem = (blockId) => { 
+      const block = findBlock(blockId); 
+      if(!block) return; 
+      const newItem = { 
+        faq: { q: '新しい質問', a: '' }, 
+        glossary: { term: '新しい用語', description: '' }, 
+        prompt: { promptName: '新しいプロンプト', beforeText: '', promptBody: '', afterText: '' },
+        'table-of-contents': { text: '新しい項目', link: '#new-section' },
+        'info-box': { label: '新しいラベル', value: '新しい値' },
+        'schedule-table': { date: '新しい日付', time: '時間', description: '内容', link: '', linkText: '詳細・申込', enabled: true }
+      }[block.type]; 
+      if (newItem) {
+        block.data.items.push(newItem); 
+        render(); 
+      }
+    };
+    
+    const deleteItem = (blockId, itemIndex) => { 
+      const block = findBlock(blockId); 
+      if (block?.data.items && confirm('この項目を削除しますか？')) { 
+        block.data.items.splice(itemIndex, 1); 
+        render(); 
+      } 
+    };
+    
+    function initializeSortable() { 
+      // 既存のSortableインスタンスを破棄
+      destroyAllSortables();
+      
+      // メインエディターエリアのSortable設定
+      const mainSortable = new Sortable(editorBlocksEl, { 
+        group: {
+          name: 'blocks',
+          pull: true,
+          put: true
+        },
+        animation: 150, 
+        handle: '.drag-handle',
+        fallbackTolerance: 3,
+        onEnd: (evt) => {
+          console.log('Main Sortable onEnd:', {
+            from: evt.from.className,
+            to: evt.to.className,
+            fromContainerId: evt.from.dataset.containerId || 'main',
+            toContainerId: evt.to.dataset.containerId || 'main',
+            oldIndex: evt.oldIndex,
+            newIndex: evt.newIndex
+          });
+          
+          const fromContainerId = evt.from.dataset.containerId;
+          const toContainerId = evt.to.dataset.containerId;
+          
+          if (fromContainerId && !toContainerId) {
+            // コンテナからメインエリアへ移動
+            console.log('Moving from container to main');
+            setTimeout(() => {
+              moveBlockFromContainerToMain(fromContainerId, evt.oldIndex, evt.newIndex);
+            }, 0);
+          } else if (!fromContainerId && toContainerId) {
+            // メインエリアからコンテナへ移動
+            console.log('Moving from main to container');
+            setTimeout(() => {
+              moveBlockFromMainToContainer(evt.oldIndex, toContainerId, evt.newIndex);
+            }, 0);
+          } else if (fromContainerId && toContainerId && fromContainerId !== toContainerId) {
+            // コンテナ間移動
+            console.log('Moving between containers');
+            setTimeout(() => {
+              moveBlockBetweenContainers(fromContainerId, toContainerId, evt.oldIndex, evt.newIndex);
+            }, 0);
+          } else if (fromContainerId && toContainerId && fromContainerId === toContainerId) {
+            // 同じコンテナ内での並び替え
+            console.log('Reordering within container');
+            setTimeout(() => {
+              reorderWithinContainer(fromContainerId, evt.oldIndex, evt.newIndex);
+            }, 0);
+          } else if (!fromContainerId && !toContainerId && evt.oldIndex !== evt.newIndex) {
+            // メインエリア内での並び替え
+            console.log('Reordering within main');
+            const item = state.blocks.splice(evt.oldIndex, 1)[0]; 
+            state.blocks.splice(evt.newIndex, 0, item);
+            setTimeout(() => {
+              renderPreview();
+            }, 0);
+          }
+        }
+      });
+      
+      state.sortableInstances.set('main', mainSortable);
+      
+      // コンテナエリアのSortable設定を初期化
+      initializeContainerSortables();
+    }
+    
+    function initializeContainerSortables() {
+      document.querySelectorAll('.container-children').forEach(container => {
+        const containerId = container.dataset.containerId;
+        
+        // 既存のインスタンスがあれば破棄
+        if (state.sortableInstances.has(containerId)) {
+          state.sortableInstances.get(containerId).destroy();
+          state.sortableInstances.delete(containerId);
+        }
+        
+        const sortableInstance = new Sortable(container, {
+          group: {
+            name: 'blocks',
+            pull: true,
+            put: true
+          },
+          animation: 150,
+          handle: '.drag-handle',
+          fallbackTolerance: 3
+          // onEndは親のSortableで処理
+        });
+        
+        state.sortableInstances.set(containerId, sortableInstance);
+      });
+    }
+    
+    function destroyAllSortables() {
+      state.sortableInstances.forEach((instance, key) => {
+        try {
+          instance.destroy();
+        } catch (e) {
+          console.warn('Failed to destroy sortable instance:', key, e);
+        }
+      });
+      state.sortableInstances.clear();
+    }
+    
+    function moveBlockFromMainToContainer(blockIndex, containerId, newIndex) {
+      const block = state.blocks.splice(blockIndex, 1)[0];
+      const container = findBlock(containerId);
+      if (container && container.data.children) {
+        container.data.children.splice(newIndex, 0, block);
+      }
+      render();
+    }
+    
+    function moveBlockFromContainerToMain(containerId, oldIndex, newIndex) {
+      const container = findBlock(containerId);
+      if (container && container.data.children) {
+        const block = container.data.children.splice(oldIndex, 1)[0];
+        state.blocks.splice(newIndex, 0, block);
+      }
+      render();
+    }
+    
+    function moveBlockBetweenContainers(fromContainerId, toContainerId, oldIndex, newIndex) {
+      const fromContainer = findBlock(fromContainerId);
+      const toContainer = findBlock(toContainerId);
+      
+      if (fromContainer && toContainer && fromContainer.data.children && toContainer.data.children) {
+        const block = fromContainer.data.children.splice(oldIndex, 1)[0];
+        toContainer.data.children.splice(newIndex, 0, block);
+      }
+      render();
+    }
+    
+    function reorderWithinContainer(containerId, oldIndex, newIndex) {
+      console.log('reorderWithinContainer called:', { containerId, oldIndex, newIndex });
+      const container = findBlock(containerId);
+      if (container && container.data.children) {
+        console.log('Before reorder:', container.data.children.map(c => c.data.title || c.type));
+        const block = container.data.children.splice(oldIndex, 1)[0];
+        container.data.children.splice(newIndex, 0, block);
+        console.log('After reorder:', container.data.children.map(c => c.data.title || c.type));
+        render();
+      } else {
+        console.error('Container not found or no children:', containerId);
+      }
+    }
+    
+    const render = () => { renderEditor(); renderPreview(); };
+    
+    function renderEditor() {
+      const collapsedBlockIds = new Set(Array.from(editorBlocksEl.querySelectorAll('.block.is-collapsed')).map(el => el.dataset.id));
+      if (state.blocks.length === 0) { 
+        editorBlocksEl.innerHTML = '<p style="text-align:center; color:#6c757d;">左のメニューからブロックを追加するか、HTMLをインポートしてください。</p>'; 
+        return; 
+      }
+      
+      editorBlocksEl.innerHTML = renderBlocks(state.blocks);
+      
+      if (collapsedBlockIds.size > 0) { 
+        collapsedBlockIds.forEach(id => { 
+          const blockEl = editorBlocksEl.querySelector(`.block[data-id="${id}"]`); 
+          if (blockEl) blockEl.classList.add('is-collapsed'); 
+        }); 
+      }
+      
+      // Sortableを確実に初期化（少し遅延を入れてDOM構築完了を待つ）
+      setTimeout(() => {
+        initializeContainerSortables();
+      }, 50);
+      
+      deselectImage();
+    }
+
+    function renderBlocks(blocks) {
+      return blocks.map(block => renderBlock(block)).join('');
+    }
+
+    function renderBlock(block) {
+      if (block.type === 'divider') { 
+        return `<div class="block block-divider" data-id="${block.id}" data-type="divider"><span><i class="bi bi-hr"></i> ${getBlockTitle(block.type)}</span><div class="block-actions"><i class="bi bi-grip-vertical drag-handle"></i><button data-action="duplicate" title="複製"><i class="bi bi-files"></i></button><button data-action="delete" title="削除"><i class="bi bi-trash"></i></button></div></div>`; 
+      }
+      
+      const titleEditable = block.data.hasOwnProperty('title');
+      const headerHtml = `<div class="block-header"><i class="bi bi-chevron-down toggle-icon"></i><span class="block-title" ${titleEditable ? `contenteditable="true" data-key="title"` : ''}>${escapeHtml(titleEditable ? block.data.title : getBlockTitle(block.type))}</span><div class="block-actions"><i class="bi bi-grip-vertical drag-handle" title="ドラッグ＆ドロップで移動"></i><button data-action="duplicate" title="複製"><i class="bi bi-files"></i></button><button data-action="delete" title="削除"><i class="bi bi-trash"></i></button></div></div>`;
+      
+      let contentHtml = '';
+      const isContainerType = ['step-box', 'content-box', 'highlight-box'].includes(block.type);
+      
+      if (isContainerType) {
+        // コンテナタイプのブロック
+        const childrenHtml = block.data.children ? renderBlocks(block.data.children) : '';
+        const containerHtml = `<div class="container-children" data-container-id="${block.id}">${childrenHtml}</div>`;
+        
+        switch(block.type) {
+          case 'step-box':
+            contentHtml = `<div class="form-group"><p style="color: #666; font-size: 0.9em; margin-bottom: 0.5rem;">子要素をここにドラッグ＆ドロップできます</p>${containerHtml}</div>`;
+            break;
+          case 'content-box':
+            contentHtml = `<div class="form-group"><p style="color: #666; font-size: 0.9em; margin-bottom: 0.5rem;">子要素をここにドラッグ＆ドロップできます</p>${containerHtml}</div>`;
+            break;
+          case 'highlight-box':
+            contentHtml = `<div class="form-group"><select data-key="style"><option value="normal" ${block.data.style === 'normal' ? 'selected' : ''}>通常</option><option value="strong" ${block.data.style === 'strong' ? 'selected' : ''}>強調</option></select></div><div class="form-group"><p style="color: #666; font-size: 0.9em; margin-bottom: 0.5rem;">子要素をここにドラッグ＆ドロップできます</p>${containerHtml}</div>`;
+            break;
+        }
+      } else {
+        // 通常のブロック
+        switch(block.type) {
+          case 'text': case 'summary': case 'caution': case 'learning-step': case 'page-intro': case 'notice-text': 
+            contentHtml = `<div class="form-group"><div class="editable-content" data-placeholder="内容" data-key="content" contenteditable="true">${block.data.content}</div></div>`; 
+            break;
+          case 'points': 
+            contentHtml = `<div class="form-group"><div class="editable-content" data-placeholder="・ポイント１..." data-key="content" contenteditable="true">${block.data.content}</div></div>`; 
+            break;
+          case 'faq': 
+            contentHtml = block.data.items.map((item, index) => `<div class="item-pair" data-index="${index}"><button data-action="delete-item" style="float:right; color:red; font-size:1.2em; line-height:1;" title="このペアを削除">&times;</button><div class="form-group"><input type="text" data-itemkey="q" value="${escapeHtml(item.q)}" placeholder="質問 ${index + 1}"></div><div class="form-group"><div class="editable-content" data-itemkey="a" contenteditable="true" data-placeholder="回答 ${index + 1}">${item.a}</div></div></div>`).join('') + `<button data-action="add-item" style="width:100%; margin-top:1rem;">QAペアを追加</button>`; 
+            break;
+          case 'glossary': 
+            contentHtml = block.data.items.map((item, index) => `<div class="item-pair" data-index="${index}"><button data-action="delete-item" style="float:right; color:red; font-size:1.2em; line-height:1;" title="このペアを削除">&times;</button><div class="form-group"><input type="text" data-itemkey="term" value="${escapeHtml(item.term)}" placeholder="用語 ${index + 1}"></div><div class="form-group"><div class="editable-content" data-itemkey="description" contenteditable="true" data-placeholder="解説 ${index + 1}">${item.description}</div></div></div>`).join('') + `<button data-action="add-item" style="width:100%; margin-top:1rem;">用語解説ペアを追加</button>`; 
+            break;
+          case 'prompt': 
+            contentHtml = block.data.items.map((item, index) => { 
+              const beforeHidden = !item.beforeText; 
+              const afterHidden = !item.afterText; 
+              return `<div class="item-pair" data-index="${index}"><button data-action="delete-item" style="float:right; color:red; font-size:1.2em; line-height:1;" title="このセットを削除">&times;</button><div class="form-group"><input type="text" data-itemkey="promptName" value="${escapeHtml(item.promptName)}" placeholder="プロンプト名 ${index + 1}"></div><button type="button" class="toggle-button" data-action="toggle-content"><i class="bi ${beforeHidden ? 'bi-plus-circle-fill' : 'bi-dash-circle-fill'}"></i> プロンプト前の説明</button><div class="form-group" style="${beforeHidden ? 'display: none;' : ''}"><div class="editable-content" data-itemkey="beforeText" contenteditable="true" data-placeholder="説明文を入力...">${item.beforeText}</div></div><div class="form-group"><textarea data-itemkey="promptBody" placeholder="プロンプト本文...">${escapeHtml(item.promptBody)}</textarea></div><button type="button" class="toggle-button" data-action="toggle-content"><i class="bi ${afterHidden ? 'bi-plus-circle-fill' : 'bi-dash-circle-fill'}"></i> プロンプト後の説明</button><div class="form-group" style="${afterHidden ? 'display: none;' : ''}"><div class="editable-content" data-itemkey="afterText" contenteditable="true" data-placeholder="説明文を入力...">${item.afterText}</div></div></div>`; 
+            }).join('') + `<button data-action="add-item" style="width:100%; margin-top:1rem;">プロンプトセットを追加</button>`; 
+            break;
+          case 'feedback': 
+            contentHtml = `<div class="form-group"><input type="text" data-key="contentName" value="${escapeHtml(block.data.contentName)}" placeholder="フォームに渡すコンテンツ名（任意）"></div>`; 
+            break;
+          case 'image': 
+            contentHtml = `<div class="form-group"><input type="text" data-key="src" value="${escapeHtml(block.data.src)}" placeholder="画像URL"></div><div class="form-group"><input type="text" data-key="alt" value="${escapeHtml(block.data.alt)}" placeholder="代替テキスト(alt)"></div><div style="display:flex; gap:1rem;"><div class="form-group" style="flex:1;"><input type="text" data-key="width" value="${escapeHtml(block.data.width)}" placeholder="幅 (例: 100%)"></div><div class="form-group" style="flex:1;"><input type="text" data-key="height" value="${escapeHtml(block.data.height)}" placeholder="高さ (例: auto)"></div></div>`; 
+            break;
+          case 'main-title': 
+            contentHtml = ``; 
+            break;
+          case 'fancy-divider': 
+            contentHtml = `<div class="form-group"><select data-key="color"><option value="green" ${block.data.color === 'green' ? 'selected' : ''}>緑</option><option value="blue" ${block.data.color === 'blue' ? 'selected' : ''}>青</option></select></div>`; 
+            break;
+          case 'table-of-contents': 
+            contentHtml = block.data.items.map((item, index) => `<div class="item-pair" data-index="${index}"><button data-action="delete-item" style="float:right; color:red; font-size:1.2em; line-height:1;" title="この項目を削除">&times;</button><div class="form-group"><input type="text" data-itemkey="text" value="${escapeHtml(item.text)}" placeholder="項目名 ${index + 1}"></div><div class="form-group"><input type="text" data-itemkey="link" value="${escapeHtml(item.link)}" placeholder="リンク先 (例: #section1)"></div></div>`).join('') + `<button data-action="add-item" style="width:100%; margin-top:1rem;">目次項目を追加</button>`; 
+            break;
+          case 'info-box': 
+            contentHtml = block.data.items.map((item, index) => `<div class="item-pair" data-index="${index}"><button data-action="delete-item" style="float:right; color:red; font-size:1.2em; line-height:1;" title="この項目を削除">&times;</button><div class="form-group"><input type="text" data-itemkey="label" value="${escapeHtml(item.label)}" placeholder="ラベル ${index + 1}"></div><div class="form-group"><input type="text" data-itemkey="value" value="${escapeHtml(item.value)}" placeholder="値 ${index + 1}"></div></div>`).join('') + `<button data-action="add-item" style="width:100%; margin-top:1rem;">情報項目を追加</button>`; 
+            break;
+ case 'schedule-table':
+   contentHtml = block.data.items.map((item, index) => `
+     <div class="item-pair" data-index="${index}">
+       <button data-action="delete-item" title="行を削除">&times;</button>
+
+       <!-- 日付 -->
+       <div class="form-group">
+         <input type="text" data-itemkey="date" value="${escapeHtml(item.date)}" placeholder="日付">
+       </div>
+
+       <!-- 時間 -->
+       <div class="form-group">
+         <input type="text" data-itemkey="time" value="${escapeHtml(item.time)}" placeholder="時間">
+       </div>
+
+       <!-- 説明 -->
+       <div class="form-group" style="flex:1 1 100px;">
+         <input type="text" data-itemkey="description" value="${escapeHtml(item.description)}" placeholder="説明">
+       </div>
+
+       <!-- リンクURL -->
+       <div class="form-group">
+         <input type="text" data-itemkey="link" value="${escapeHtml(item.link)}" placeholder="リンクURL">
+       </div>
+
+ <!-- チェックボックス＋固定テキスト -->
+ <div class="form-group checkbox-group">
+   <input type="checkbox" data-itemkey="enabled" ${item.enabled !== false ? 'checked' : ''}>
+   <span class="fixed-label">詳細・申込</span>
+ </div>
+     </div>`).join('') +
+   `<button data-action="add-item" style="width:100%; margin-top:0.5rem;">スケジュール行を追加</button>`;
+            break;
+          case 'highlight-bar': 
+            contentHtml = `<div class="form-group"><select data-key="color"><option value="orange" ${block.data.color === 'orange' ? 'selected' : ''}>オレンジ</option><option value="blue" ${block.data.color === 'blue' ? 'selected' : ''}>ブルー</option></select></div><div class="form-group"><div class="editable-content" data-placeholder="カラーバーのテキスト..." data-key="content" contenteditable="true">${block.data.content}</div></div>`; 
+            break;
+          case 'button-link': 
+            contentHtml = `<div class="form-group"><input type="text" data-key="text" value="${escapeHtml(block.data.text)}" placeholder="ボタンテキスト"></div><div class="form-group"><input type="text" data-key="url" value="${escapeHtml(block.data.url)}" placeholder="リンクURL"></div><div class="form-group"><select data-key="enabled"><option value="true" ${block.data.enabled ? 'selected' : ''}>有効</option><option value="false" ${!block.data.enabled ? 'selected' : ''}>無効</option></select></div>`; 
+            break;
+        }
+      }
+      
+      return `<div class="block ${isContainerType ? 'container-block' : ''}" data-id="${block.id}" data-type="${block.type}">${headerHtml}<div class="block-content">${contentHtml}</div></div>`;
+    }
+
+    function renderPreview() { 
+      console.log('renderPreview called - current state:', {
+        mainBlocks: state.blocks.map(b => ({ 
+          type: b.type, 
+          title: b.data.title, 
+          hasChildren: !!b.data.children, 
+          childrenCount: b.data.children?.length || 0,
+          children: b.data.children?.map(c => ({ type: c.type, title: c.data.title })) || []
+        }))
+      });
+      
+      const htmlContent = generatePreviewHtml(false);
+      console.log('Generated HTML preview length:', htmlContent.length);
+      
+      // iframe の内容を確実に更新するために、一意のタイムスタンプを追加
+      const timestamp = Date.now();
+      const newSrcdoc = `<!DOCTYPE html>
+<html>
+<head>
+  <style>${state.previewCss}</style>
+  <meta name="timestamp" content="${timestamp}">
+</head>
+<body>
+  <div class="video-description-container">${htmlContent}</div>
+  <!-- Update timestamp: ${timestamp} -->
+</body>
+</html>`;
+      
+      // iframe を確実に更新
+      previewIframe.src = 'about:blank';
+      setTimeout(() => {
+        previewIframe.srcdoc = newSrcdoc;
+        console.log('Preview updated with timestamp:', timestamp);
+      }, 10);
+    }
+    
+    function generatePreviewHtml(withContainer) {
+      const bodyContent = renderPreviewBlocks(state.blocks);
+      return withContainer ? `<div class="video-description-container">${bodyContent}</div>` : bodyContent;
+    }
+
+    function renderPreviewBlocks(blocks, isChild = false) {
+      return blocks.map(block => renderPreviewBlock(block, isChild)).join('\n');
+    }
+
+    function initializeContainerSortables() {
+  document.querySelectorAll('.container-children').forEach(container => {
+    const containerId = container.dataset.containerId;
+
+    // 既存のSortableインスタンスを破棄
+    if (state.sortableInstances.has(containerId)) {
+      state.sortableInstances.get(containerId).destroy();
+      state.sortableInstances.delete(containerId);
+    }
+
+    const sortableInstance = new Sortable(container, {
+      group: {
+        name: 'blocks',
+        pull: true,
+        put: true
+      },
+      animation: 150,
+      handle: '.drag-handle',
+      fallbackTolerance: 3,
+      onEnd: (evt) => {
+        const fromId = evt.from.dataset.containerId;
+        const toId   = evt.to.dataset.containerId;
+
+        // コンテナ → メイン
+        if (fromId && !toId) {
+          moveBlockFromContainerToMain(fromId, evt.oldIndex, evt.newIndex);
+        }
+        // メイン → コンテナ
+        else if (!fromId && toId) {
+          moveBlockFromMainToContainer(evt.oldIndex, toId, evt.newIndex);
+        }
+        // コンテナ間移動
+        else if (fromId && toId && fromId !== toId) {
+          moveBlockBetweenContainers(fromId, toId, evt.oldIndex, evt.newIndex);
+        }
+        // 同一コンテナ内での並び替え
+        else if (fromId && toId && fromId === toId && evt.oldIndex !== evt.newIndex) {
+          reorderWithinContainer(fromId, evt.oldIndex, evt.newIndex);
+        }
+
+        // 状態更新後に再レンダー
+        render();
+      }
+    });
+
+    state.sortableInstances.set(containerId, sortableInstance);
+  });
+}
+
+
+    function renderPreviewBlock(block, isChild = false) {
+      const { data, type } = block; 
+      const title = escapeHtml(data.title || '');
+      const blockClass = isChild ? 'child-block-preview' : 'block-preview';
+      
+      switch(type) {
+          case 'text': 
+            return `<div class="text-content ${blockClass}">${data.content || ''}</div>`;
+          case 'summary': 
+            return `<section class="lecture-summary ${blockClass}"><h2>${title}</h2><div class="content-wrapper">${data.content || ''}</div></section>`;
+          case 'caution': 
+            return `<section class="notes section-caution ${blockClass}"><h2>${title}</h2><div class="content-wrapper caution-content">${data.content || ''}</div></section>`;
+          case 'points': 
+            return `<section class="important-points section-important ${blockClass}"><h2>${title}</h2><div class="content-wrapper important-content"><ul>${(data.content || '').split(/<br\s*\/?>/i).filter(p => p.trim()).map(p => `<li>${p.replace(/・/g, '').replace(/<[^>]*>/g, '')}</li>`).join('')}</ul></div></section>`;
+          case 'faq': 
+            return `<section class="faq-section-attractive ${blockClass}"><h2>${title}</h2>${data.items.map(item => `<div class="faq-item-attractive"><div class="faq-question-attractive">${escapeHtml(item.q)}</div><div class="faq-answer-attractive">${item.a}</div></div>`).join('')}</section>`;
+          case 'glossary': 
+            return `<section class="glossary-section ${blockClass}"><h2>${title}</h2><table class="glossary-table"><tbody>${data.items.map(item => `<tr><th>${escapeHtml(item.term)}</th><td>${item.description}</td></tr>`).join('')}</tbody></table></section>`;
+          case 'prompt': 
+            return `<section class="prompt-section ${blockClass}"><h2>${title}</h2>${data.items.map(item => `<div class="prompt-item">${item.beforeText ? `<div class="prompt-text prompt-text-before">${item.beforeText}</div>` : ''}${item.promptName ? `<h3>${escapeHtml(item.promptName)}</h3>` : ''}${item.promptName && item.promptBody ? '<hr class="prompt-divider">' : ''}<pre><code>${escapeHtml(item.promptBody)}</code></pre>${item.afterText ? `<div class="prompt-text prompt-text-after">${item.afterText}</div>` : ''}</div>`).join('')}</section>`;
+          case 'divider': 
+            return `<hr class="section-divider ${blockClass}">`;
+          case 'fancy-divider': 
+            const dividerClass = data.color === 'blue' ? 'fancy-divider blue' : 'fancy-divider green'; 
+            return `<div class="${dividerClass} ${blockClass}"></div>`;
+          case 'image': 
+            const style = `max-width:100%; border-radius:8px; width:${escapeHtml(data.width || '100%')}; height:${escapeHtml(data.height || 'auto')};`; 
+            return `<p style="text-align:center;" class="${blockClass}"><img src="${escapeHtml(data.src)}" alt="${escapeHtml(data.alt)}" style="${style}"></p>`;
+          case 'feedback': 
+            const baseUrl = 'https://docs.google.com/forms/d/e/1FAIpQLSeyFApdVBP72m5vR0zdpyzRGCMwdnAq32oCet_1krypxUGLoA/viewform?usp=pp_url&entry.1547985899='; 
+            const formUrl = baseUrl + encodeURIComponent(data.contentName || ''); 
+            const iconUrl = "https://img.icons8.com/ios/100/circled-chevron-right--v1.png"; 
+            return `<div class="feedback-section ${blockClass}"><a href="${escapeHtml(formUrl)}" target="_blank" rel="noopener noreferrer" class="feedback-button">改善依頼フォームはこちら<img src="${escapeHtml(iconUrl)}" alt="アイコン" class="feedback-button-icon"></a><p class="feedback-note">※いただいたご意見は改善の参考とさせていただきます。…</p><p class="qa-guidance">講座内容についての質問は<strong>…</strong>に投稿してください。</p></div>`;
+          case 'main-title': 
+            return `<div class="main-title ${blockClass}">${escapeHtml(title)}</div>`;
+          case 'learning-step': 
+            return `<div class="learning-step ${blockClass}"><h3>${escapeHtml(title)}</h3><div class="step-content">${data.content || ''}</div></div>`;
+          case 'step-box': 
+            const stepChildrenHtml = data.children && data.children.length > 0 ? renderPreviewBlocks(data.children, true) : '';
+            return `<div class="step-box ${blockClass}"><h3>${escapeHtml(title)}</h3><div class="step-content">${stepChildrenHtml}</div></div>`;
+          case 'content-box': 
+            const contentChildrenHtml = data.children && data.children.length > 0 ? renderPreviewBlocks(data.children, true) : '';
+            return `<div class="content-box-container ${blockClass}">${contentChildrenHtml}</div>`;
+          case 'highlight-box': 
+            const highlightClass = data.style === 'strong' ? 'highlight-box-container strong' : 'highlight-box-container';
+            const highlightChildrenHtml = data.children && data.children.length > 0 ? renderPreviewBlocks(data.children, true) : '';
+            return `<div class="${highlightClass} ${blockClass}">${highlightChildrenHtml}</div>`;
+          case 'table-of-contents': 
+            return `<div class="table-of-contents-box ${blockClass}"><h3>${escapeHtml(title)}</h3><ul>${data.items.map(item => `<li><a href="${escapeHtml(item.link)}">${escapeHtml(item.text)}</a></li>`).join('')}</ul></div>`;
+          case 'info-box': 
+            return `<div class="info-box ${blockClass}"><h4>${escapeHtml(title)}</h4>${data.items.map(item => `<div class="info-item"><strong>${escapeHtml(item.label)}:</strong> ${escapeHtml(item.value)}</div>`).join('')}</div>`;
+          case 'page-intro': 
+            return `<div class="page-intro ${blockClass}">${data.content || ''}</div>`;
+          case 'schedule-table': 
+            return `<div class="${blockClass}"><table class="schedule-table"><tbody>${data.items.map(item => `<tr><td>${escapeHtml(item.date)}</td><td>${escapeHtml(item.time)}</td><td>${escapeHtml(item.description)}</td><td>${item.enabled !== false && item.link ? `<a href="${escapeHtml(item.link)}" class="button-link" target="_blank">${escapeHtml(item.linkText)}</a>` : `<span class="button-link disabled">${escapeHtml(item.linkText)}</span>`}</td></tr>`).join('')}</tbody></table></div>`;
+          case 'highlight-bar': 
+            const barClass = data.color === 'blue' ? 'highlight-bar blue' : 'highlight-bar orange'; 
+            return `<div class="${barClass} ${blockClass}">${data.content || ''}</div>`;
+          case 'button-link': 
+            const buttonClass = data.enabled === false ? 'button-link disabled' : 'button-link'; 
+            return `<div class="${blockClass}">${data.enabled === false ? `<span class="${buttonClass}">${escapeHtml(data.text)}</span>` : `<a href="${escapeHtml(data.url)}" class="${buttonClass}" target="_blank">${escapeHtml(data.text)}</a>`}</div>`;
+          case 'notice-text': 
+            return `<div class="notice-text ${blockClass}">${data.content || ''}</div>`;
+          default: 
+            return '';
+      }
+    }
+    
+    const getEventData = (e) => { 
+      const blockEl = e.target.closest('.block'); 
+      if (!blockEl) return {}; 
+      const block = findBlock(blockEl.dataset.id); 
+      return { 
+        block, 
+        blockEl, 
+        action: e.target.closest('button')?.dataset.action, 
+        key: e.target.dataset.key, 
+        itemIndex: e.target.closest('.item-pair')?.dataset.index || null, 
+        itemKey: e.target.dataset.itemkey 
+      }; 
+    };
+    
+    const findBlock = (id) => {
+      // メインのブロック配列から検索
+      let found = state.blocks.find(b => b.id == id);
+      if (found) return found;
+      
+      // 子ブロックからも検索
+      for (const block of state.blocks) {
+        if (block.data.children) {
+          found = block.data.children.find(child => child.id == id);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+    
+    const getBlockTitle = (type) => ({ 
+      text: 'テキスト',
+      summary: '説明文', 
+      image: '画像', 
+      prompt: '実演プロンプト', 
+      points: '重要ポイント', 
+      faq: 'よくある質問', 
+      glossary: '用語解説', 
+      caution: '注意事項', 
+      divider: '区切り線', 
+      feedback: '改善フォーム',
+      'fancy-divider': '装飾区切り線',
+      'step-box': 'ステップボックス',
+      'content-box': 'コンテンツボックス',
+      'highlight-box': 'ハイライトボックス',
+      'main-title': 'メインタイトル',
+      'learning-step': '学習ステップ',
+      'table-of-contents': '目次',
+      'info-box': '情報ボックス',
+      'page-intro': 'ページ説明文',
+      'schedule-table': 'スケジュール表',
+      'highlight-bar': 'カラーバー',
+      'button-link': 'ボタンリンク',
+      'notice-text': '注意書き'
+    }[type] || '無題');
+    
+    const escapeHtml = (str) => String(str || '').replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+  </script>
+</body>
+
+</html>
+}
