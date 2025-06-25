@@ -1,0 +1,555 @@
+ (cd "$(git rev-parse --show-toplevel)" && git apply --3way <<'EOF' 
+diff --git a/index.html b/index.html
+index 4718ca9ee7cb0a44ed70c5b31a723c2005c486fd..16781c8de0f069c9dad958cab4405876440092c8 100644
+--- a/index.html
++++ b/index.html
+@@ -340,50 +340,55 @@
+       padding: 0.5rem 1rem;
+       font-size: 0.9rem;
+       color: var(--text-secondary);
+     }
+ 
+     .block-divider>span {
+       display: flex;
+       align-items: center;
+       gap: 0.5rem;
+     }
+ 
+     .block:not(.block-divider) .block-header {
+       border-left: 4px solid #6c757d;
+     }
+ 
+     .block[data-type="text"] .block-header {
+       background-color: #e8f5e8;
+       border-left-color: #4caf50;
+     }
+ 
+     .block[data-type="summary"] .block-header {
+       background-color: #e7f3ff;
+       border-left-color: #0d6efd;
+     }
+ 
++    .block[data-type="section-title"] .block-header {
++      background-color: #e7f3ff;
++      border-left-color: #0d6efd;
++    }
++
+     .block[data-type="prompt"] .block-header {
+       background-color: #e9ecef;
+       border-left-color: #6c757d;
+     }
+ 
+     .block[data-type="points"] .block-header {
+       background-color: #fff9e6;
+       border-left-color: #ffc107;
+     }
+ 
+     .block[data-type="faq"] .block-header,
+     .block[data-type="glossary"] .block-header {
+       background-color: #e6f9f0;
+       border-left-color: #198754;
+     }
+ 
+     .block[data-type="caution"] .block-header {
+       background-color: #fff0f1;
+       border-left-color: #dc3545;
+     }
+ 
+     .block[data-type="image"] .block-header {
+       background-color: #f3e9ff;
+       border-left-color: #6f42c1;
+     }
+@@ -615,51 +620,51 @@
+ 
+     /* 有効チェックボックス＋固定テキストを小さく */
+     .block[data-type="schedule-table"] .item-pair .form-group.checkbox-group {
+       display: flex;
+       align-items: center;
+       gap: 0.25rem;
+     }
+ 
+     .block[data-type="schedule-table"] .item-pair .fixed-label {
+       white-space: nowrap;
+       font-size: 0.9rem;
+       margin-left: 0.5rem;
+     }
+   </style>
+ </head>
+ 
+ <body>
+ 
+   <div class="app-container">
+     <aside class="sidebar">
+       <div class="sidebar-content">
+         <div class="pane-content">
+           <header class="pane-header" style="padding:0 0 1rem 0;">通常パーツ</header>
+           <div class="template-list">
+             <button data-type="text"><i class="bi bi-fonts"></i> テキスト</button>
+-            <button data-type="summary"><i class="bi bi-card-text"></i> 説明文</button>
++            <button data-type="section-title"><i class="bi bi-type-h2"></i> 見出し</button>
+             <button data-type="image"><i class="bi bi-image"></i> 画像</button>
+             <button data-type="prompt"><i class="bi bi-terminal"></i> 実演プロンプト</button>
+             <button data-type="points"><i class="bi bi-star"></i> 重要ポイント</button>
+             <button data-type="faq"><i class="bi bi-question-circle"></i> よくある質問</button>
+             <button data-type="glossary"><i class="bi bi-book"></i> 用語解説</button>
+             <button data-type="caution"><i class="bi bi-exclamation-triangle"></i> 注意事項</button>
+             <button data-type="feedback"><i class="bi bi-send"></i> 改善フォーム</button>
+             <button data-type="divider"><i class="bi bi-hr"></i> 区切り線</button>
+             <button data-type="fancy-divider"><i class="bi bi-arrow-down"></i> 装飾区切り線</button>
+           </div>
+         </div>
+         <div class="pane-content" style="border-top: 1px solid var(--border-color);">
+           <header class="pane-header" style="padding:1rem 0;">ボックスパーツ</header>
+           <div class="template-list box-parts">
+             <button data-type="step-box"><i class="bi bi-box"></i> ステップボックス</button>
+             <button data-type="content-box"><i class="bi bi-box"></i> コンテンツボックス</button>
+             <button data-type="highlight-box"><i class="bi bi-lightbulb"></i> ハイライトボックス</button>
+           </div>
+         </div>
+         <div class="pane-content" style="border-top: 1px solid var(--border-color);">
+           <header class="pane-header" style="padding:1rem 0;">その他パーツ</header>
+           <div class="template-list other-parts">
+             <button data-type="main-title"><i class="bi bi-badge-3d"></i> メインタイトル</button>
+             <button data-type="table-of-contents"><i class="bi bi-list-nested"></i> 目次</button>
+             <button data-type="info-box"><i class="bi bi-info-square"></i> 情報ボックス</button>
+@@ -789,50 +794,56 @@
+       initializeEventListeners();
+     });
+ 
+     function getDefaultPreviewCss() {
+       return `
+         /* --- 基本スタイル --- */
+         body { margin: 0; padding: 0; }
+         .video-description-container { font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif; line-height: 1.7; color: #343a40; background-color: #ffffff; padding: 15px 20px; border-radius: 6px; margin: 0; max-width: none; width: 100%; box-sizing: border-box; }
+         a { color: #0d6efd; text-decoration: none; transition: color 0.2s ease; }
+         a:hover { color: #0a58ca; text-decoration: underline; }
+         
+         /* --- ブロック間の余白を一元管理 --- */
+         .block-preview { margin-bottom: 25px; }
+         .video-description-container > .block-preview:last-child { margin-bottom: 0; }
+         .child-block-preview { margin-bottom: 15px; }
+         .child-block-preview:last-child { margin-bottom: 0; }
+         
+         section > h2 { font-size: 1.25em; color: #000000; margin-top: 0; margin-bottom: 15px; padding-left: 16px; position: relative; font-weight: 600; line-height: 1.4; }
+         section > h2::before { content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 5px; height: 18px; background-color: #20c997; border-radius: 2.5px; }
+         .lecture-summary > h2 { margin-bottom: 6px; }
+         .lecture-summary > h2 { margin-bottom: 8px; }
+         .section-important > h2 { color: #856404; }
+         .section-important > h2::before { background-color: #ffc107; }
+         .section-caution > h2 { color: #842029; }
+         .section-caution > h2::before { background-color: #dc3545; }
++        .section-heading { font-size: 1.25em; margin-top: 0; margin-bottom: 15px; padding-left: 16px; position: relative; font-weight: 600; line-height: 1.4; }
++        .section-heading::before { content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 5px; height: 18px; border-radius: 2.5px; }
++        .section-heading.green { color: #000000; }
++        .section-heading.green::before { background-color: #20c997; }
++        .section-heading.yellow { color: #856404; }
++        .section-heading.yellow::before { background-color: #ffc107; }
+         hr.section-divider { border: none; border-top: 1px solid #e9ecef; }
+         .lecture-summary p, .lecture-summary div { font-size: 0.98em; color: #495057; line-height: 1.7; margin: 0; white-space: pre-wrap; word-wrap: break-word; }
+         .content-wrapper { padding: 15px 20px; border-radius: 4px; }
+         .important-content { background-color: #fffbeb; border: 1px solid #ffe58f; }
+         .important-content ul { list-style: none; padding-left: 5px; margin: 0; }
+         .important-content ul li { margin-bottom: 0.6em; padding-left: 20px; position: relative; font-size: 0.95em; color: #664d03; line-height: 1.6; }
+         .important-content ul li:last-child { margin-bottom: 0; }
+         .important-content ul li::before { content: ''; position: absolute; left: 6px; top: 0.6em; width: 6px; height: 6px; background-color: #ffc107; border-radius: 50%; }
+         .caution-content { background-color: #fef4f5; border: 1px solid #f7c6cb; }
+         .caution-content p, .caution-content div { margin: 0; color: #58151c; font-size: 0.95em; font-weight: 500; line-height: 1.6; white-space: pre-wrap; }
+         .faq-item-attractive { background-color: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; margin-bottom: 20px; padding: 15px 20px; }
+         .faq-item-attractive:last-child { margin-bottom: 0; }
+         .faq-question-attractive { font-weight: 600; color: #2c6e49; font-size: 1.05em; margin-bottom: 10px; padding-left: 38px; position: relative; line-height: 1.5; }
+         .faq-question-attractive::before { content: "Q"; position: absolute; left: 0; top: 0; background-color: #4caf50; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.9em; font-weight: bold; }
+         .faq-answer-attractive { color: #495057; font-size: 0.98em; padding-left: 38px; position: relative; line-height: 1.7; word-wrap: break-word; }
+         .faq-answer-attractive::before { content: "A"; position: absolute; left: 0; top: 0; background-color: #ff9800; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.9em; font-weight: bold; }
+         .glossary-section .glossary-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.95em; border: 1px solid #cccccc; }
+         .glossary-section .glossary-table th, .glossary-section .glossary-table td { padding: 11px 14px; text-align: left; vertical-align: top; line-height: 1.6; border-bottom: 1px solid #e0e0e0; }
+         .glossary-section .glossary-table th { background-color: #f0f9f4; color: #155724; font-weight: 600; width: 25%; border-right: 1px solid #cccccc; }
+         .glossary-section .glossary-table td { background-color: #ffffff; width: 75%; word-wrap: break-word; }
+         .glossary-section .glossary-table tr:last-child th, .glossary-section .glossary-table tr:last-child td { border-bottom: none; }
+         .feedback-section { background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 5px; padding: 15px 25px; line-height: 1.6; }
+         .feedback-note { margin-top: 0; margin-bottom: 8px; font-size: 0.8em; color: #6c757d; line-height: 1.5; }
+         .feedback-button { display: inline-flex; align-items: center; background-color: #fd9843; color: #ffffff !important; padding: 8px 12px 8px 16px; border-radius: 4px; text-decoration: none !important; font-weight: 700; font-size: 0.98em; margin-bottom: 15px; transition: background-color 0.2s ease; line-height: 1; border: none; }
+         .feedback-button:hover { background-color: #fd7e14; }
+@@ -1337,50 +1348,58 @@ editorBlocksEl.addEventListener('change', e => {
+             blocks.push({
+               id: blockId++,
+               type: 'points',
+               data: { title, content: getListContent(element) }
+             });
+           } else if (className.includes('faq-section')) {
+             blocks.push({
+               id: blockId++,
+               type: 'faq',
+               data: { title, items: parseFaqItems(element) }
+             });
+           } else if (className.includes('glossary-section')) {
+             blocks.push({
+               id: blockId++,
+               type: 'glossary',
+               data: { title, items: parseGlossaryItems(element) }
+             });
+           } else if (className.includes('prompt-section')) {
+             blocks.push({
+               id: blockId++,
+               type: 'prompt',
+               data: { title, items: parsePromptItems(element) }
+             });
+           }
+         }
++        else if (tagName === 'h2' && className.includes('section-heading')) {
++          const color = className.includes('yellow') ? 'yellow' : 'green';
++          blocks.push({
++            id: blockId++,
++            type: 'section-title',
++            data: { title: textContent, color }
++          });
++        }
+         
+         else if (tagName === 'hr') {
+           if (className.includes('section-divider')) {
+             blocks.push({ id: blockId++, type: 'divider', data: {} });
+           } else if (className.includes('fancy-divider')) {
+             blocks.push({ id: blockId++, type: 'fancy-divider', data: { color: 'green' } });
+           }
+         }
+         
+         else if (className.includes('main-title')) {
+           blocks.push({
+             id: blockId++,
+             type: 'main-title',
+             data: { title: textContent }
+           });
+         }
+         
+         else if (className.includes('learning-step')) {
+           const h3 = element.querySelector('h3');
+           const title = h3 ? h3.textContent.trim() : 'ステップ';
+           blocks.push({
+             id: blockId++,
+             type: 'learning-step',
+             data: { title, content: getContentWithoutTitle(element) }
+           });
+@@ -1503,51 +1522,52 @@ editorBlocksEl.addEventListener('change', e => {
+       return items.length > 0 ? items : [{ term: '用語', description: '' }];
+     }
+     
+     function parsePromptItems(element) {
+       const items = [];
+       const promptItems = element.querySelectorAll('.prompt-item');
+       promptItems.forEach(item => {
+         const h3 = item.querySelector('h3');
+         const beforeText = item.querySelector('.prompt-text-before');
+         const afterText = item.querySelector('.prompt-text-after');
+         const code = item.querySelector('code');
+         
+         items.push({
+           promptName: h3 ? h3.textContent.trim() : 'プロンプト名',
+           beforeText: beforeText ? beforeText.innerHTML.trim() : '',
+           promptBody: code ? code.textContent.trim() : '',
+           afterText: afterText ? afterText.innerHTML.trim() : ''
+         });
+       });
+       return items.length > 0 ? items : [{ promptName: 'プロンプト名', beforeText: '', promptBody: '', afterText: '' }];
+     }
+ 
+     const addBlock = (type, initialData = {}, containerId = null) => {
+       const templates = { 
+         text: { content: 'ここにテキストを入力してください。' },
+-        summary: { title: '説明文', content: '' }, 
++        'section-title': { title: '見出し', color: 'green' },
++        summary: { title: '説明文', content: '' },
+         image: { title: '画像', src: initialData.src || '', alt: initialData.alt || '画像', width: '100%', height: 'auto' }, 
+         prompt: { title: '実演プロンプト', items: [{ promptName: 'プロンプト名', beforeText: '', promptBody: 'ここにプロンプト本文を入力...', afterText: '' }] }, 
+         points: { title: '重要ポイント', content: '・ポイント1<br>・ポイント2' }, 
+         faq: { title: 'よくある質問', items: [{ q: '質問', a: '' }] }, 
+         glossary: { title: '用語解説', items: [{ term: '用語', description: '' }] }, 
+         caution: { title: '注意事項', content: '' }, 
+         feedback: { contentName: '' }, 
+         divider: {},
+         'fancy-divider': { color: 'green' },
+         'step-box': { title: 'ステップタイトル', children: [] },
+         'content-box': { children: [] },
+         'highlight-box': { style: 'normal', children: [] },
+         'main-title': { title: 'メインタイトル' },
+         'learning-step': { title: 'ステップタイトル', content: 'ステップの内容を入力してください。' },
+         'table-of-contents': { title: '目次', items: [{ text: '項目1', link: '#section1' }, { text: '項目2', link: '#section2' }] },
+         'info-box': { title: '情報ボックス', items: [{ label: 'ラベル', value: '値' }] },
+         'page-intro': { content: 'ページの説明文を入力してください。' },
+         'schedule-table': { title: 'スケジュール', items: [{ date: '日付', time: '時間', description: '内容', link: '', linkText: '詳細・申込', enabled: true }] },
+         'highlight-bar': { content: 'カラーバーのテキスト', color: 'orange' },
+         'button-link': { text: 'ボタンテキスト', url: 'https://example.com', enabled: true },
+         'notice-text': { content: '注意書きの内容を入力してください。' }
+       };
+       
+       const newBlock = { id: Date.now(), type, data: JSON.parse(JSON.stringify(templates[type])) };
+       
+@@ -1829,52 +1849,55 @@ editorBlocksEl.addEventListener('change', e => {
+           case 'text': case 'summary': case 'caution': case 'learning-step': case 'page-intro': case 'notice-text': 
+             contentHtml = `<div class="form-group"><div class="editable-content" data-placeholder="内容" data-key="content" contenteditable="true">${block.data.content}</div></div>`; 
+             break;
+           case 'points': 
+             contentHtml = `<div class="form-group"><div class="editable-content" data-placeholder="・ポイント１..." data-key="content" contenteditable="true">${block.data.content}</div></div>`; 
+             break;
+           case 'faq': 
+             contentHtml = block.data.items.map((item, index) => `<div class="item-pair" data-index="${index}"><button data-action="delete-item" style="float:right; color:red; font-size:1.2em; line-height:1;" title="このペアを削除">&times;</button><div class="form-group"><input type="text" data-itemkey="q" value="${escapeHtml(item.q)}" placeholder="質問 ${index + 1}"></div><div class="form-group"><div class="editable-content" data-itemkey="a" contenteditable="true" data-placeholder="回答 ${index + 1}">${item.a}</div></div></div>`).join('') + `<button data-action="add-item" style="width:100%; margin-top:1rem;">QAペアを追加</button>`; 
+             break;
+           case 'glossary': 
+             contentHtml = block.data.items.map((item, index) => `<div class="item-pair" data-index="${index}"><button data-action="delete-item" style="float:right; color:red; font-size:1.2em; line-height:1;" title="このペアを削除">&times;</button><div class="form-group"><input type="text" data-itemkey="term" value="${escapeHtml(item.term)}" placeholder="用語 ${index + 1}"></div><div class="form-group"><div class="editable-content" data-itemkey="description" contenteditable="true" data-placeholder="解説 ${index + 1}">${item.description}</div></div></div>`).join('') + `<button data-action="add-item" style="width:100%; margin-top:1rem;">用語解説ペアを追加</button>`; 
+             break;
+           case 'prompt': 
+             contentHtml = block.data.items.map((item, index) => { 
+               const beforeHidden = !item.beforeText; 
+               const afterHidden = !item.afterText; 
+               return `<div class="item-pair" data-index="${index}"><button data-action="delete-item" style="float:right; color:red; font-size:1.2em; line-height:1;" title="このセットを削除">&times;</button><div class="form-group"><input type="text" data-itemkey="promptName" value="${escapeHtml(item.promptName)}" placeholder="プロンプト名 ${index + 1}"></div><button type="button" class="toggle-button" data-action="toggle-content"><i class="bi ${beforeHidden ? 'bi-plus-circle-fill' : 'bi-dash-circle-fill'}"></i> プロンプト前の説明</button><div class="form-group" style="${beforeHidden ? 'display: none;' : ''}"><div class="editable-content" data-itemkey="beforeText" contenteditable="true" data-placeholder="説明文を入力...">${item.beforeText}</div></div><div class="form-group"><textarea data-itemkey="promptBody" placeholder="プロンプト本文...">${escapeHtml(item.promptBody)}</textarea></div><button type="button" class="toggle-button" data-action="toggle-content"><i class="bi ${afterHidden ? 'bi-plus-circle-fill' : 'bi-dash-circle-fill'}"></i> プロンプト後の説明</button><div class="form-group" style="${afterHidden ? 'display: none;' : ''}"><div class="editable-content" data-itemkey="afterText" contenteditable="true" data-placeholder="説明文を入力...">${item.afterText}</div></div></div>`; 
+             }).join('') + `<button data-action="add-item" style="width:100%; margin-top:1rem;">プロンプトセットを追加</button>`; 
+             break;
+           case 'feedback': 
+             contentHtml = `<div class="form-group"><input type="text" data-key="contentName" value="${escapeHtml(block.data.contentName)}" placeholder="フォームに渡すコンテンツ名（任意）"></div>`; 
+             break;
+           case 'image': 
+             contentHtml = `<div class="form-group"><input type="text" data-key="src" value="${escapeHtml(block.data.src)}" placeholder="画像URL"></div><div class="form-group"><input type="text" data-key="alt" value="${escapeHtml(block.data.alt)}" placeholder="代替テキスト(alt)"></div><div style="display:flex; gap:1rem;"><div class="form-group" style="flex:1;"><input type="text" data-key="width" value="${escapeHtml(block.data.width)}" placeholder="幅 (例: 100%)"></div><div class="form-group" style="flex:1;"><input type="text" data-key="height" value="${escapeHtml(block.data.height)}" placeholder="高さ (例: auto)"></div></div>`; 
+             break;
+-          case 'main-title': 
+-            contentHtml = ``; 
++          case 'section-title':
++            contentHtml = `<div class="form-group"><input type="text" data-key="title" value="${escapeHtml(block.data.title)}" placeholder="見出しテキスト"></div><div class="form-group"><select data-key="color"><option value="green" ${block.data.color === 'green' ? 'selected' : ''}>緑</option><option value="yellow" ${block.data.color === 'yellow' ? 'selected' : ''}>黄</option></select></div>`;
++            break;
++          case 'main-title':
++            contentHtml = ``;
+             break;
+           case 'fancy-divider': 
+             contentHtml = `<div class="form-group"><select data-key="color"><option value="green" ${block.data.color === 'green' ? 'selected' : ''}>緑</option><option value="blue" ${block.data.color === 'blue' ? 'selected' : ''}>青</option></select></div>`; 
+             break;
+           case 'table-of-contents': 
+             contentHtml = block.data.items.map((item, index) => `<div class="item-pair" data-index="${index}"><button data-action="delete-item" style="float:right; color:red; font-size:1.2em; line-height:1;" title="この項目を削除">&times;</button><div class="form-group"><input type="text" data-itemkey="text" value="${escapeHtml(item.text)}" placeholder="項目名 ${index + 1}"></div><div class="form-group"><input type="text" data-itemkey="link" value="${escapeHtml(item.link)}" placeholder="リンク先 (例: #section1)"></div></div>`).join('') + `<button data-action="add-item" style="width:100%; margin-top:1rem;">目次項目を追加</button>`; 
+             break;
+           case 'info-box': 
+             contentHtml = block.data.items.map((item, index) => `<div class="item-pair" data-index="${index}"><button data-action="delete-item" style="float:right; color:red; font-size:1.2em; line-height:1;" title="この項目を削除">&times;</button><div class="form-group"><input type="text" data-itemkey="label" value="${escapeHtml(item.label)}" placeholder="ラベル ${index + 1}"></div><div class="form-group"><input type="text" data-itemkey="value" value="${escapeHtml(item.value)}" placeholder="値 ${index + 1}"></div></div>`).join('') + `<button data-action="add-item" style="width:100%; margin-top:1rem;">情報項目を追加</button>`; 
+             break;
+  case 'schedule-table':
+    contentHtml = block.data.items.map((item, index) => `
+      <div class="item-pair" data-index="${index}">
+        <button data-action="delete-item" title="行を削除">&times;</button>
+ 
+        <!-- 日付 -->
+        <div class="form-group">
+          <input type="text" data-itemkey="date" value="${escapeHtml(item.date)}" placeholder="日付">
+        </div>
+ 
+        <!-- 時間 -->
+        <div class="form-group">
+          <input type="text" data-itemkey="time" value="${escapeHtml(item.time)}" placeholder="時間">
+        </div>
+ 
+@@ -1989,76 +2012,79 @@ editorBlocksEl.addEventListener('change', e => {
+           moveBlockBetweenContainers(fromId, toId, evt.oldIndex, evt.newIndex);
+         }
+         // 同一コンテナ内での並び替え
+         else if (fromId && toId && fromId === toId && evt.oldIndex !== evt.newIndex) {
+           reorderWithinContainer(fromId, evt.oldIndex, evt.newIndex);
+         }
+ 
+         // 状態更新後に再レンダー
+         render();
+       }
+     });
+ 
+     state.sortableInstances.set(containerId, sortableInstance);
+   });
+ }
+ 
+ 
+     function renderPreviewBlock(block, isChild = false) {
+       const { data, type } = block; 
+       const title = escapeHtml(data.title || '');
+       const blockClass = isChild ? 'child-block-preview' : 'block-preview';
+       
+       switch(type) {
+           case 'text': 
+             return `<div class="text-content ${blockClass}">${data.content || ''}</div>`;
+-          case 'summary': 
+-            return `<section class="lecture-summary ${blockClass}"><h2>${title}</h2><div class="content-wrapper">${data.content || ''}</div></section>`;
++          case 'summary':
++            return `<section class="lecture-summary ${blockClass}"><div class="content-wrapper">${data.content || ''}</div></section>`;
+           case 'caution': 
+             return `<section class="notes section-caution ${blockClass}"><h2>${title}</h2><div class="content-wrapper caution-content">${data.content || ''}</div></section>`;
+-          case 'points': 
+-            return `<section class="important-points section-important ${blockClass}"><h2>${title}</h2><div class="content-wrapper important-content"><ul>${(data.content || '').split(/<br\s*\/?>/i).filter(p => p.trim()).map(p => `<li>${p.replace(/・/g, '').replace(/<[^>]*>/g, '')}</li>`).join('')}</ul></div></section>`;
+-          case 'faq': 
+-            return `<section class="faq-section-attractive ${blockClass}"><h2>${title}</h2>${data.items.map(item => `<div class="faq-item-attractive"><div class="faq-question-attractive">${escapeHtml(item.q)}</div><div class="faq-answer-attractive">${item.a}</div></div>`).join('')}</section>`;
+-          case 'glossary': 
+-            return `<section class="glossary-section ${blockClass}"><h2>${title}</h2><table class="glossary-table"><tbody>${data.items.map(item => `<tr><th>${escapeHtml(item.term)}</th><td>${item.description}</td></tr>`).join('')}</tbody></table></section>`;
+-          case 'prompt': 
+-            return `<section class="prompt-section ${blockClass}"><h2>${title}</h2>${data.items.map(item => `<div class="prompt-item">${item.beforeText ? `<div class="prompt-text prompt-text-before">${item.beforeText}</div>` : ''}${item.promptName ? `<h3>${escapeHtml(item.promptName)}</h3>` : ''}${item.promptName && item.promptBody ? '<hr class="prompt-divider">' : ''}<pre><code>${escapeHtml(item.promptBody)}</code></pre>${item.afterText ? `<div class="prompt-text prompt-text-after">${item.afterText}</div>` : ''}</div>`).join('')}</section>`;
++          case 'points':
++            return `<section class="important-points section-important ${blockClass}"><div class="content-wrapper important-content"><ul>${(data.content || '').split(/<br\s*\/?>/i).filter(p => p.trim()).map(p => `<li>${p.replace(/・/g, '').replace(/<[^>]*>/g, '')}</li>`).join('')}</ul></div></section>`;
++          case 'faq':
++            return `<section class="faq-section-attractive ${blockClass}">${data.items.map(item => `<div class="faq-item-attractive"><div class="faq-question-attractive">${escapeHtml(item.q)}</div><div class="faq-answer-attractive">${item.a}</div></div>`).join('')}</section>`;
++          case 'glossary':
++            return `<section class="glossary-section ${blockClass}"><table class="glossary-table"><tbody>${data.items.map(item => `<tr><th>${escapeHtml(item.term)}</th><td>${item.description}</td></tr>`).join('')}</tbody></table></section>`;
++          case 'prompt':
++            return `<section class="prompt-section ${blockClass}">${data.items.map(item => `<div class="prompt-item">${item.beforeText ? `<div class="prompt-text prompt-text-before">${item.beforeText}</div>` : ''}${item.promptName ? `<h3>${escapeHtml(item.promptName)}</h3>` : ''}${item.promptName && item.promptBody ? '<hr class="prompt-divider">' : ''}<pre><code>${escapeHtml(item.promptBody)}</code></pre>${item.afterText ? `<div class="prompt-text prompt-text-after">${item.afterText}</div>` : ''}</div>`).join('')}</section>`;
+           case 'divider': 
+             return `<hr class="section-divider ${blockClass}">`;
+           case 'fancy-divider': 
+             const dividerClass = data.color === 'blue' ? 'fancy-divider blue' : 'fancy-divider green'; 
+             return `<div class="${dividerClass} ${blockClass}"></div>`;
+           case 'image': 
+             const style = `max-width:100%; border-radius:8px; width:${escapeHtml(data.width || '100%')}; height:${escapeHtml(data.height || 'auto')};`; 
+             return `<p style="text-align:center;" class="${blockClass}"><img src="${escapeHtml(data.src)}" alt="${escapeHtml(data.alt)}" style="${style}"></p>`;
+-          case 'feedback': 
+-            const baseUrl = 'https://docs.google.com/forms/d/e/1FAIpQLSeyFApdVBP72m5vR0zdpyzRGCMwdnAq32oCet_1krypxUGLoA/viewform?usp=pp_url&entry.1547985899='; 
+-            const formUrl = baseUrl + encodeURIComponent(data.contentName || ''); 
+-            const iconUrl = "https://img.icons8.com/ios/100/circled-chevron-right--v1.png"; 
++          case 'feedback':
++            const baseUrl = 'https://docs.google.com/forms/d/e/1FAIpQLSeyFApdVBP72m5vR0zdpyzRGCMwdnAq32oCet_1krypxUGLoA/viewform?usp=pp_url&entry.1547985899=';
++            const formUrl = baseUrl + encodeURIComponent(data.contentName || '');
++            const iconUrl = "https://img.icons8.com/ios/100/circled-chevron-right--v1.png";
+             return `<div class="feedback-section ${blockClass}"><a href="${escapeHtml(formUrl)}" target="_blank" rel="noopener noreferrer" class="feedback-button">改善依頼フォームはこちら<img src="${escapeHtml(iconUrl)}" alt="アイコン" class="feedback-button-icon"></a><p class="feedback-note">※いただいたご意見は改善の参考とさせていただきます。…</p><p class="qa-guidance">講座内容についての質問は<strong>…</strong>に投稿してください。</p></div>`;
+-          case 'main-title': 
++          case 'section-title':
++            const headingClass = data.color === 'yellow' ? 'section-heading yellow' : 'section-heading green';
++            return `<h2 class="${headingClass} ${blockClass}">${escapeHtml(title)}</h2>`;
++          case 'main-title':
+             return `<div class="main-title ${blockClass}">${escapeHtml(title)}</div>`;
+           case 'learning-step': 
+             return `<div class="learning-step ${blockClass}"><h3>${escapeHtml(title)}</h3><div class="step-content">${data.content || ''}</div></div>`;
+           case 'step-box': 
+             const stepChildrenHtml = data.children && data.children.length > 0 ? renderPreviewBlocks(data.children, true) : '';
+             return `<div class="step-box ${blockClass}"><h3>${escapeHtml(title)}</h3><div class="step-content">${stepChildrenHtml}</div></div>`;
+           case 'content-box': 
+             const contentChildrenHtml = data.children && data.children.length > 0 ? renderPreviewBlocks(data.children, true) : '';
+             return `<div class="content-box-container ${blockClass}">${contentChildrenHtml}</div>`;
+           case 'highlight-box': 
+             const highlightClass = data.style === 'strong' ? 'highlight-box-container strong' : 'highlight-box-container';
+             const highlightChildrenHtml = data.children && data.children.length > 0 ? renderPreviewBlocks(data.children, true) : '';
+             return `<div class="${highlightClass} ${blockClass}">${highlightChildrenHtml}</div>`;
+           case 'table-of-contents': 
+             return `<div class="table-of-contents-box ${blockClass}"><h3>${escapeHtml(title)}</h3><ul>${data.items.map(item => `<li><a href="${escapeHtml(item.link)}">${escapeHtml(item.text)}</a></li>`).join('')}</ul></div>`;
+           case 'info-box': 
+             return `<div class="info-box ${blockClass}"><h4>${escapeHtml(title)}</h4>${data.items.map(item => `<div class="info-item"><strong>${escapeHtml(item.label)}:</strong> ${escapeHtml(item.value)}</div>`).join('')}</div>`;
+           case 'page-intro': 
+             return `<div class="page-intro ${blockClass}">${data.content || ''}</div>`;
+           case 'schedule-table': 
+             return `<div class="${blockClass}"><table class="schedule-table"><tbody>${data.items.map(item => `<tr><td>${escapeHtml(item.date)}</td><td>${escapeHtml(item.time)}</td><td>${escapeHtml(item.description)}</td><td>${item.enabled !== false && item.link ? `<a href="${escapeHtml(item.link)}" class="button-link" target="_blank">${escapeHtml(item.linkText)}</a>` : `<span class="button-link disabled">${escapeHtml(item.linkText)}</span>`}</td></tr>`).join('')}</tbody></table></div>`;
+           case 'highlight-bar': 
+             const barClass = data.color === 'blue' ? 'highlight-bar blue' : 'highlight-bar orange'; 
+             return `<div class="${barClass} ${blockClass}">${data.content || ''}</div>`;
+           case 'button-link': 
+@@ -2080,51 +2106,52 @@ editorBlocksEl.addEventListener('change', e => {
+         blockEl, 
+         action: e.target.closest('button')?.dataset.action, 
+         key: e.target.dataset.key, 
+         itemIndex: e.target.closest('.item-pair')?.dataset.index || null, 
+         itemKey: e.target.dataset.itemkey 
+       }; 
+     };
+     
+     const findBlock = (id) => {
+       // メインのブロック配列から検索
+       let found = state.blocks.find(b => b.id == id);
+       if (found) return found;
+       
+       // 子ブロックからも検索
+       for (const block of state.blocks) {
+         if (block.data.children) {
+           found = block.data.children.find(child => child.id == id);
+           if (found) return found;
+         }
+       }
+       return null;
+     };
+     
+     const getBlockTitle = (type) => ({ 
+       text: 'テキスト',
+-      summary: '説明文', 
++      'section-title': '見出し',
++      summary: '説明文',
+       image: '画像', 
+       prompt: '実演プロンプト', 
+       points: '重要ポイント', 
+       faq: 'よくある質問', 
+       glossary: '用語解説', 
+       caution: '注意事項', 
+       divider: '区切り線', 
+       feedback: '改善フォーム',
+       'fancy-divider': '装飾区切り線',
+       'step-box': 'ステップボックス',
+       'content-box': 'コンテンツボックス',
+       'highlight-box': 'ハイライトボックス',
+       'main-title': 'メインタイトル',
+       'learning-step': '学習ステップ',
+       'table-of-contents': '目次',
+       'info-box': '情報ボックス',
+       'page-intro': 'ページ説明文',
+       'schedule-table': 'スケジュール表',
+       'highlight-bar': 'カラーバー',
+       'button-link': 'ボタンリンク',
+       'notice-text': '注意書き'
+     }[type] || '無題');
+     
+     const escapeHtml = (str) => String(str || '').replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+   </script>
+diff --git "a/\343\202\263\343\203\274\343\203\211.gs" "b/\343\202\263\343\203\274\343\203\211.gs"
+index e256e838c42d47ddb4a157227da5e0be3d3952bd..805b1d951dab16f313831a4b21a761c42bbe89bb 100644
+--- "a/\343\202\263\343\203\274\343\203\211.gs"
++++ "b/\343\202\263\343\203\274\343\203\211.gs"
+@@ -27,50 +27,56 @@ function getCssForPreview() {
+   /* 親からの継承をリセット */
+   all: unset;
+ }
+ 
+ /* 必要なレイアウト・スペーシングだけ再定義 */
+ .child-block-preview {
+   display: block;
+   margin-bottom: 15px;  /* 既存の間隔ルール */
+ }
+     /* --- 基本スタイル --- */
+     body { font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif; line-height: 1.7; color: #343a40; margin: 0; padding: 15px; }
+     .video-description-container { background-color: #ffffff; border-radius: 6px; margin: 0 auto; max-width: 800px; }
+     a { color: #0d6efd; text-decoration: none; transition: color 0.2s ease; }
+     a:hover { color: #0a58ca; text-decoration: underline; }
+     
+     /* --- ブロック間の余白を一元管理 --- */
+     .block-preview { margin-bottom: 25px; }
+     .video-description-container > .block-preview:last-child { margin-bottom: 0; }
+     
+     section > h2 { font-size: 1.25em; color: #000000; margin-top: 0; margin-bottom: 15px; padding-left: 16px; position: relative; font-weight: 600; line-height: 1.4; }
+     section > h2::before { content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 5px; height: 18px; background-color: #20c997; border-radius: 2.5px; }
+     .section-important > h2 { color: #856404; }
+     .section-important > h2::before { background-color: #ffc107; }
+     .section-caution > h2 { color: #842029; }
+     .section-caution > h2::before { background-color: #dc3545; }
++    .section-heading { font-size: 1.25em; margin-top: 0; margin-bottom: 15px; padding-left: 16px; position: relative; font-weight: 600; line-height: 1.4; }
++    .section-heading::before { content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 5px; height: 18px; border-radius: 2.5px; }
++    .section-heading.green { color: #000000; }
++    .section-heading.green::before { background-color: #20c997; }
++    .section-heading.yellow { color: #856404; }
++    .section-heading.yellow::before { background-color: #ffc107; }
+     hr.section-divider { border: none; border-top: 1px solid #e9ecef; }
+     .lecture-summary p, .lecture-summary div { font-size: 0.98em; color: #495057; line-height: 1.7; margin: 0; white-space: pre-wrap; word-wrap: break-word; }
+     .content-wrapper { padding: 15px 20px; border-radius: 4px; }
+     .important-content { background-color: #fffbeb; border: 1px solid #ffe58f; }
+     .important-content ul { list-style: none; padding-left: 5px; margin: 0; }
+     .important-content ul li { margin-bottom: 0.6em; padding-left: 20px; position: relative; font-size: 0.95em; color: #664d03; line-height: 1.6; }
+     .important-content ul li:last-child { margin-bottom: 0; }
+     .important-content ul li::before { content: ''; position: absolute; left: 6px; top: 0.6em; width: 6px; height: 6px; background-color: #ffc107; border-radius: 50%; }
+     .caution-content { background-color: #fef4f5; border: 1px solid #f7c6cb; }
+     .caution-content p, .caution-content div { margin: 0; color: #58151c; font-size: 0.95em; font-weight: 500; line-height: 1.6; white-space: pre-wrap; }
+     .faq-item-attractive { background-color: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; margin-bottom: 20px; padding: 15px 20px; }
+     .faq-item-attractive:last-child { margin-bottom: 0; }
+     .faq-question-attractive { font-weight: 600; color: #2c6e49; font-size: 1.05em; margin-bottom: 10px; padding-left: 38px; position: relative; line-height: 1.5; }
+     .faq-question-attractive::before { content: "Q"; position: absolute; left: 0; top: 0; background-color: #4caf50; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.9em; font-weight: bold; }
+     .faq-answer-attractive { color: #495057; font-size: 0.98em; padding-left: 38px; position: relative; line-height: 1.7; word-wrap: break-word; }
+     .faq-answer-attractive::before { content: "A"; position: absolute; left: 0; top: 0; background-color: #ff9800; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.9em; font-weight: bold; }
+     .glossary-section .glossary-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.95em; border: 1px solid #cccccc; }
+     .glossary-section .glossary-table th, .glossary-section .glossary-table td { padding: 11px 14px; text-align: left; vertical-align: top; line-height: 1.6; border-bottom: 1px solid #e0e0e0; }
+     .glossary-section .glossary-table th { background-color: #f0f9f4; color: #155724; font-weight: 600; width: 25%; border-right: 1px solid #cccccc; }
+     .glossary-section .glossary-table td { background-color: #ffffff; width: 75%; word-wrap: break-word; }
+     .glossary-section .glossary-table tr:last-child th, .glossary-section .glossary-table tr:last-child td { border-bottom: none; }
+     .feedback-section { background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 5px; padding: 15px 25px; line-height: 1.6; }
+     .feedback-note { margin-top: 0; margin-bottom: 8px; font-size: 0.8em; color: #6c757d; line-height: 1.5; }
+     .feedback-button { display: inline-flex; align-items: center; background-color: #fd9843; color: #ffffff !important; padding: 8px 12px 8px 16px; border-radius: 4px; text-decoration: none !important; font-weight: 700; font-size: 0.98em; margin-bottom: 15px; transition: background-color 0.2s ease; line-height: 1; border: none; }
+     .feedback-button:hover { background-color: #fd7e14; }
+ 
+EOF
+)
